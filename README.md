@@ -71,31 +71,54 @@ The platform combines:
 
 ## Architecture
 
-Radidone follows a microservice architecture. Each service owns a distinct capability and communicates over HTTP/REST or WebSocket through the API Gateway.
+Radidone follows a **modular monolithic architecture** centered around a single FastAPI backend application.
 
-### Containers
+The backend is organized into internal modules with clear responsibilities:
+- session management,
+- AI mentoring,
+- image analysis,
+- voice processing,
+- and persistence.
 
-| Container | Tech | Responsibility |
-|---|---|---|
-| Web Application | React / TypeScript / TailwindCSS | Interactive UI: canvas, chat, voice, dashboard |
-| API Gateway | Python / FastAPI | Auth enforcement, rate-limiting, request routing |
-| Session Orchestrator | Python / FastAPI | Session lifecycle, phase transitions, cross-service coordination |
-| Mentor Engine | Python / FastAPI | LLM context assembly, Socratic prompt generation, phase evaluation |
-| Image Service | Python / FastAPI | X-ray upload, pre-processing, AI API proxy, result caching |
-| Voice Service | Python / FastAPI | STT/TTS WebSocket bridge |
-| PostgreSQL | — | Persistent storage for users, sessions, annotations, results |
-| Object Store | local storage | Raw X-rays, processed images, heatmap overlays, reports |
+### Backend Modules
+
+| Module | Responsibility |
+|---|---|
+| Authentication | Clerk authentication and JWT validation |
+| Session Manager | Session lifecycle and phase transitions |
+| Mentor Engine | LLM orchestration and Socratic dialogue |
+| Image Processing | X-ray upload, preprocessing, and AI predictions |
+| Voice Processing | Speech-to-text and text-to-speech orchestration |
+| Annotation Engine | Canvas annotation interpretation |
+| Persistence Layer | PostgreSQL and object storage integration |
+
+### High-Level Request Flow
+
+```text
+Dental Student
+        ↓
+Web Application (React)
+        ↓
+FastAPI Backend Application
+   ├── Authentication Module
+   ├── Session Manager
+   ├── Mentor Engine
+   ├── Image Processing Module
+   ├── Voice Processing Module
+   ├── Annotation Engine
+   ├── PostgreSQL
+   └── Object Storage
+```
 
 ### External Dependencies
 
 | System | Role |
 |---|---|
-| Dental AI API | Per-tooth disease predictions from panoramic X-rays |
-| LLM Provider | Socratic mentor response generation |
+| Dental AI API | Per-tooth disease predictions |
+| LLM Provider | Mentor response generation |
 | Speech-to-Text API | Student voice transcription |
-| Text-to-Speech API | Mentor audio synthesis |
-| Clerk | User identity, JWT issuance, RBAC |
-
+| Text-to-Speech API | Mentor voice synthesis |
+| Clerk | Authentication and session management |
 ### High-Level Request Flow
 
 ```
@@ -144,29 +167,32 @@ Full C4 model (Level 1–3) is maintained in [`docs/architecture/c4_model.dsl`](
 - DigitalOcean Droplet (object storage + PostgreSQL)
 
 ---
-
 ## Project Structure
 
-```
+```bash
 radidone/
 │
-├── apps/
-│   ├── web-app/              # React SPA
-│   ├── api-gateway/          # FastAPI — auth, routing, rate-limiting
-│   ├── session-orchestrator/ # FastAPI — session lifecycle
-│   ├── mentor-engine/        # FastAPI — LLM context, Socratic prompts
-│   ├── image-service/        # FastAPI — X-ray upload & AI analysis
-│   └── voice-service/        # FastAPI — STT/TTS bridge
+├── frontend/                  # React application
 │
-├── packages/
-│   ├── shared-types/         # Shared TypeScript / Python type definitions
-│   ├── ui-components/        # Reusable React components
-│   └── utils/                # Shared utility functions
+├── backend/
+│   ├── app/
+│   │   ├── api/               # API routes
+│   │   ├── auth/              # Authentication logic
+│   │   ├── sessions/          # Session management
+│   │   ├── mentor/            # AI mentor engine
+│   │   ├── imaging/           # X-ray processing
+│   │   ├── voice/             # STT/TTS integration
+│   │   ├── annotations/       # Annotation interpretation
+│   │   ├── database/          # DB models and repositories
+│   │   ├── services/          # Shared business services
+│   │   └── main.py            # FastAPI entrypoint
+│   │
+│   └── requirements.txt
 │
 ├── docs/
-│   ├── architecture/         # C4 DSL and rendered diagrams
-│   ├── api/                  # OpenAPI specs per service
-│   └── diagrams/             # Supplementary flow diagrams
+│   ├── architecture/
+│   ├── api/
+│   └── diagrams/
 │
 └── README.md
 ```
@@ -326,53 +352,25 @@ Core tables:
 git clone https://github.com/amkorwalid/radidone.git
 cd radidone
 
-# Install frontend dependencies
-cd apps/web-app
+# Frontend
+cd frontend
 npm install
 
-# Install API Gateway dependencies
-cd ../api-gateway
+# Backend
+cd backend
 pip install -r requirements.txt
-
-# Install Session Orchestrator dependencies
-cd ../session-orchestrator
-pip install -r requirements.txt
-
-# Install Mentor Engine dependencies
-cd ../mentor-engine
-pip install -r requirements.txt
-
-# Install Image Service dependencies
-cd ../image-service
-pip install -r requirements.txt
-
-# Install Voice Service dependencies
-cd ../voice-service
-pip install -r requirements.txt
-
 ```
 
 ### Running Services Locally
 
 ```bash
-# Terminal 1 — Web Application
-cd apps/web-app && npm run dev
+# Frontend
+cd frontend
+npm run dev
 
-# Terminal 2 — API Gateway (port 8000)
-cd apps/api-gateway && uvicorn main:app --reload --port 8000
-
-# Terminal 3 — Session Orchestrator (port 8001)
-cd apps/session-orchestrator && uvicorn main:app --reload --port 8001
-
-# Terminal 4 — Mentor Engine (port 8002)
-cd apps/mentor-engine && uvicorn main:app --reload --port 8002
-
-# Terminal 5 — Image Service (port 8003)
-cd apps/image-service && uvicorn main:app --reload --port 8003
-
-# Terminal 6 — Voice Service (port 8004)
-cd apps/voice-service && uvicorn main:app --reload --port 8004
-
+# Backend
+cd backend
+uvicorn app.main:app --reload
 ```
 
 ---
