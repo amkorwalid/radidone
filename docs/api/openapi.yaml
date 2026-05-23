@@ -1,0 +1,711 @@
+openapi: 3.1.0
+info:
+  title: Radidone API
+  version: 1.0.0
+  description: |
+    OpenAPI contract for the Radidone backend.
+
+    The API is derived from the C4 architecture and the database schema.
+    HTTP endpoints are prefixed with `/api`; voice and chat streams are
+    documented as WebSocket channels.
+servers:
+  - url: https://api.radidone.example.com
+    description: Production
+  - url: http://localhost:8000
+    description: Local development
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Users
+  - name: Sessions
+  - name: Images
+  - name: Annotations
+  - name: Conversations
+  - name: Analysis
+  - name: Voice
+paths:
+  /api/auth/token:
+    post:
+      tags: [Auth]
+      summary: Exchange a Clerk token for an API JWT
+      operationId: createAuthToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+      responses:
+        '200':
+          description: JWT issued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: Get the current user profile
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/sessions:
+    get:
+      tags: [Sessions]
+      summary: List the current user's sessions
+      operationId: listSessions
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: Session list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSessions'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags: [Sessions]
+      summary: Create a learning session
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/sessions/{sessionId}:
+    get:
+      tags: [Sessions]
+      summary: Get session details
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags: [Sessions]
+      summary: Update session status
+      operationId: updateSession
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionRequest'
+      responses:
+        '200':
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/sessions/{sessionId}/report:
+    get:
+      tags: [Sessions]
+      summary: Export the session report
+      operationId: getSessionReport
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Session report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionReport'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/images:
+    post:
+      tags: [Images]
+      summary: Upload a panoramic X-ray image
+      operationId: uploadImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+      responses:
+        '201':
+          description: Image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XrayImage'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/images/{imageId}:
+    get:
+      tags: [Images]
+      summary: Get image metadata
+      operationId: getImage
+      parameters:
+        - $ref: '#/components/parameters/imageId'
+      responses:
+        '200':
+          description: X-ray image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XrayImage'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/images/{imageId}/results:
+    get:
+      tags: [Analysis]
+      summary: Get AI diagnostic results for an image
+      operationId: getImageResults
+      parameters:
+        - $ref: '#/components/parameters/imageId'
+      responses:
+        '200':
+          description: Analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIAnalysis'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/images/{imageId}/annotations:
+    get:
+      tags: [Annotations]
+      summary: List annotations for an image
+      operationId: listImageAnnotations
+      parameters:
+        - $ref: '#/components/parameters/imageId'
+      responses:
+        '200':
+          description: Annotation list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Annotation'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags: [Annotations]
+      summary: Create an annotation for an image
+      operationId: createImageAnnotation
+      parameters:
+        - $ref: '#/components/parameters/imageId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAnnotationRequest'
+      responses:
+        '201':
+          description: Annotation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Annotation'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/annotations/{annotationId}:
+    patch:
+      tags: [Annotations]
+      summary: Update an annotation
+      operationId: updateAnnotation
+      parameters:
+        - $ref: '#/components/parameters/annotationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAnnotationRequest'
+      responses:
+        '200':
+          description: Annotation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Annotation'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags: [Annotations]
+      summary: Delete an annotation
+      operationId: deleteAnnotation
+      parameters:
+        - $ref: '#/components/parameters/annotationId'
+      responses:
+        '204':
+          description: Annotation deleted
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/sessions/{sessionId}/conversations:
+    get:
+      tags: [Conversations]
+      summary: List conversation turns for a session
+      operationId: listConversationTurns
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Conversation history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConversationTurn'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags: [Conversations]
+      summary: Add a mentor or student message to the session
+      operationId: createConversationTurn
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConversationTurnRequest'
+      responses:
+        '201':
+          description: Conversation turn created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationTurn'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/sessions/{sessionId}/voice:
+    post:
+      tags: [Voice]
+      summary: Submit audio for transcription
+      operationId: submitVoiceAudio
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoiceUploadRequest'
+      responses:
+        '201':
+          description: Voice transcription stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioVoice'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/voice:
+    get:
+      tags: [Voice]
+      summary: WebSocket voice stream endpoint
+      description: |
+        WebSocket endpoint used for bidirectional voice streaming.
+        Clients connect with `wss://.../api/voice` and exchange audio and
+        transcription events.
+      responses:
+        '101':
+          description: Switching Protocols
+  /api/chat:
+    get:
+      tags: [Conversations]
+      summary: WebSocket mentor chat stream endpoint
+      description: |
+        WebSocket endpoint used for real-time mentor chat.
+        Clients connect with `wss://.../api/chat` and exchange mentor and
+        student messages.
+      responses:
+        '101':
+          description: Switching Protocols
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    sessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    imageId:
+      name: imageId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    annotationId:
+      name: annotationId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+  responses:
+    UnauthorizedError:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    AuthTokenRequest:
+      type: object
+      required: [clerkToken]
+      properties:
+        clerkToken:
+          type: string
+          description: Clerk session or identity token
+    AuthTokenResponse:
+      type: object
+      required: [accessToken, tokenType, user]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/User'
+    User:
+      type: object
+      required: [id, clerkId, email, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SessionStatus:
+      type: string
+      enum: [active, completed, archived]
+    SessionPhase:
+      type: string
+      enum: [observation, hypothesis, diagnosis, reflection, evaluation]
+    Session:
+      type: object
+      required: [id, userId, status, startedAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateSessionRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [guided, assessment]
+          description: Session experience mode
+        xrayImageId:
+          type: integer
+          description: Optional starter image to attach to the session
+    UpdateSessionRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+    SessionReport:
+      type: object
+      required: [sessionId, summary, score, phases]
+      properties:
+        sessionId:
+          type: integer
+        summary:
+          type: string
+        score:
+          type: number
+          format: float
+        phases:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionPhaseScore'
+    SessionPhaseScore:
+      type: object
+      required: [phase, score]
+      properties:
+        phase:
+          $ref: '#/components/schemas/SessionPhase'
+        score:
+          type: number
+          format: float
+        feedback:
+          type: string
+    ImageUploadRequest:
+      type: object
+      required: [file, sessionId]
+      properties:
+        file:
+          type: string
+          format: binary
+        sessionId:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+    XrayImage:
+      type: object
+      required: [id, sessionId, userId, uploadTime]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        userId:
+          type: integer
+        uploadTime:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+    AIAnalysis:
+      type: object
+      required: [id, xrayImageId, analysisJson, createdAt]
+      properties:
+        id:
+          type: integer
+        xrayImageId:
+          type: integer
+        analysisJson:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+    AnnotationGeometry:
+      type: object
+      additionalProperties: true
+      description: Geometry payload matching the canvas shape definition
+    Annotation:
+      type: object
+      required: [id, xrayImageId, userId, sessionId, type, geometry, createdAt]
+      properties:
+        id:
+          type: integer
+        xrayImageId:
+          type: integer
+        userId:
+          type: integer
+        sessionId:
+          type: integer
+        type:
+          type: string
+        geometry:
+          $ref: '#/components/schemas/AnnotationGeometry'
+        findingLabel:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    CreateAnnotationRequest:
+      type: object
+      required: [type, geometry]
+      properties:
+        type:
+          type: string
+        geometry:
+          $ref: '#/components/schemas/AnnotationGeometry'
+        findingLabel:
+          type: string
+    UpdateAnnotationRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        geometry:
+          $ref: '#/components/schemas/AnnotationGeometry'
+        findingLabel:
+          type: string
+          nullable: true
+    ConversationTurn:
+      type: object
+      required: [id, sessionId, senderRole, turnIndex, createdAt]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        senderRole:
+          type: string
+          enum: [student, mentor]
+        messageText:
+          type: string
+          nullable: true
+        turnIndex:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    CreateConversationTurnRequest:
+      type: object
+      required: [senderRole, messageText]
+      properties:
+        senderRole:
+          type: string
+          enum: [student, mentor]
+        messageText:
+          type: string
+    VoiceUploadRequest:
+      type: object
+      required: [audio]
+      properties:
+        audio:
+          type: string
+          format: binary
+        conversationId:
+          type: integer
+        transcriptText:
+          type: string
+    AudioVoice:
+      type: object
+      required: [id, sessionId, userId, conversationId, createdAt]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        userId:
+          type: integer
+        conversationId:
+          type: integer
+        transcriptText:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    PaginatedSessions:
+      type: object
+      required: [items, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
