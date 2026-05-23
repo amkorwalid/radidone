@@ -11,6 +11,7 @@
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
+- [Implementation Plan](#implementation-plan)
 - [Learning Session Flow](#learning-session-flow)
 - [Mentor Engine](#mentor-engine)
 - [API Overview](#api-overview)
@@ -173,31 +174,53 @@ Full C4 model (Level 1–3) is maintained in [`docs/architecture/c4_model.dsl`](
 
 ```bash
 radidone/
-│
-├── frontend/                  # React application
-│
-├── backend/
-│   ├── app/
-│   │   ├── api/               # API routes
-│   │   ├── auth/              # Authentication logic
-│   │   ├── sessions/          # Session management
-│   │   ├── mentor/            # AI mentor engine
-│   │   ├── imaging/           # X-ray processing
-│   │   ├── voice/             # STT/TTS integration
-│   │   ├── annotations/       # Annotation interpretation
-│   │   ├── database/          # DB models and repositories
-│   │   ├── services/          # Shared business services
-│   │   └── main.py            # FastAPI entrypoint
-│   │
-│   └── requirements.txt
-│
+├── apps/
+│   ├── web-app/                # React + TypeScript frontend
+│   ├── api-gateway/            # Auth, routing, and WebSocket entrypoint
+│   ├── session-orchestrator/   # Session lifecycle and workflow state
+│   ├── mentor-engine/          # Socratic mentor and prompt pipeline
+│   ├── voice-service/          # Speech-to-text / text-to-speech adapters
+│   └── image-service/          # X-ray upload and AI analysis integration
+├── packages/
+│   ├── shared-types/           # DTOs, enums, and contracts
+│   ├── shared-utils/           # Logging, validation, env helpers
+│   ├── auth/                   # Clerk/JWT helpers
+│   └── api-client/             # Generated client from OpenAPI
+├── database/
+│   ├── migrations/
+│   ├── schema.sql
+│   └── seeds/
 ├── docs/
-│   ├── architecture/
 │   ├── api/
-│   └── diagrams/
-│
-└── README.md
+│   ├── architecture/
+│   ├── diagrams/
+│   └── implementation-plan.md
+├── infra/
+│   ├── docker/
+│   ├── compose/
+│   └── deployment/
+└── tests/
+    ├── unit/
+    ├── integration/
+    └── e2e/
 ```
+
+## Implementation Plan
+
+The full implementation roadmap is documented in [`docs/implementation-plan.md`](docs/implementation-plan.md).
+
+### Priority order
+
+1. Mentor/voice pipeline
+2. Backend foundation
+3. Frontend product flow
+4. Hardening, observability, and tests
+
+### Target delivery shape
+
+- Voice streaming and mentor responses should work end-to-end first.
+- The session orchestrator should own phase transitions and persistence.
+- The OpenAPI contract in [`docs/api/openapi.yaml`](docs/api/openapi.yaml) remains the API source of truth.
 
 ---
 
