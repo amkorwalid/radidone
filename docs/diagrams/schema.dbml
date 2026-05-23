@@ -100,7 +100,7 @@ Table audio_voices {
 Table ai_analysis {
   id             serial      [pk]
   xray_image_id  int         [not null, ref: > xray_images.id]
-  analysis_json  jsonb       // The complete thaakaMed API response
+  analysis_json  jsonb       // The complete ThakaMed API response when available
   created_at     timestamptz [not null, default: `now()`]
 
   Indexes {
