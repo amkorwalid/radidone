@@ -1,0 +1,106 @@
+// Radidone - DBML schema for dbdiagram.io
+
+Table users {
+  id             serial [pk] // Unique user id (could come from Clerk/ClerkAPI, but tracked locally for platform features)
+  clerk_id       varchar [unique, note: 'Clerk external auth id']
+  name           varchar
+  email          varchar [unique]
+  created_at     timestamptz
+  updated_at     timestamptz
+
+  Indexes {
+    clerk_id [name: "idx_users_clerk_id"] 
+    email [name: "idx_users_email"] 
+  }
+}
+
+Table sessions {
+  id             serial [pk]
+  user_id        int [ref: > users.id]
+  status         varchar       // e.g. 'active', 'completed'
+  started_at     timestamptz
+  ended_at       timestamptz
+  created_at     timestamptz
+  updated_at     timestamptz
+
+  Indexes {
+    user_id [name: "idx_sessions_user_id"] 
+    status [name: "idx_sessions_status"]
+    created_at [name: "idx_sessions_created_at"]
+  }
+}
+
+Table xray_images {
+  id               serial [pk]
+  session_id       int [ref: > sessions.id]
+  user_id          int [ref: > users.id]
+  upload_time      timestamptz
+  metadata         jsonb        // Image meta: orientation, width, height, etc.
+
+  Indexes {
+    session_id [name: "idx_xray_images_session_id"] 
+    user_id [name: "idx_xray_images_user_id"]
+    upload_time [name: "idx_xray_images_upload_time"]
+  }
+}
+
+Table annotations {
+  id              serial [pk]
+  xray_image_id   int [ref: > xray_images.id]
+  user_id         int [ref: > users.id]
+  session_id      int [ref: > sessions.id]
+  type            varchar         // e.g. 'polygon', 'circle', 'tooth-ref'
+  geometry        jsonb           // Coordinates, shape properties, etc.
+  finding_label   varchar         // What did the student annotate (e.g. "caries", "cyst")
+  created_at      timestamptz
+
+  Indexes {
+    xray_image_id [name: "idx_annotations_xray_image_id"]
+    user_id [name: "idx_annotations_user_id"]
+    session_id [name: "idx_annotations_session_id"]
+    created_at [name: "idx_annotations_created_at"]
+  }
+}
+
+Table session_conversations {
+  id              serial [pk]
+  session_id      int [ref: > sessions.id]
+  sender_role     varchar        // 'student', 'mentor'
+  message_text    text
+  turn_index      int            // Chronological order of turn
+  created_at      timestamptz
+
+  Indexes {
+    session_id [name: "idx_session_conversations_session_id"]
+    turn_index [name: "idx_session_conversations_turn_index"]
+  }
+}
+
+Table audio_voices {
+  id              serial [pk]
+  session_id      int [ref: > sessions.id]
+  user_id         int [ref: > users.id]
+  conversation_id int [ref: > session_conversations.id]
+  transcript_text text
+  transcript_json jsonb    
+  created_at      timestamptz
+
+  Indexes {
+    session_id [name: "idx_audio_voices_session_id"]
+    user_id [name: "idx_audio_voices_user_id"]
+    conversation_id [name: "idx_audio_voices_conversation_id"]
+    created_at [name: "idx_audio_voices_created_at"]
+  }
+}
+
+Table ai_analysis {
+  id              serial [pk]
+  xray_image_id   int [ref: > xray_images.id]
+  analysis_json   jsonb        // The complete thaakaMed API response
+  created_at      timestamptz
+
+  Indexes {
+    xray_image_id [name: "idx_ai_analysis_xray_image_id"]
+    created_at [name: "idx_ai_analysis_created_at"]
+  }
+}
