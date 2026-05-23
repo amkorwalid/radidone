@@ -490,8 +490,6 @@ components:
           type: integer
         status:
           $ref: '#/components/schemas/SessionStatus'
-        phase:
-          $ref: '#/components/schemas/SessionPhase'
         startedAt:
           type: string
           format: date-time
@@ -521,8 +519,6 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/SessionStatus'
-        phase:
-          $ref: '#/components/schemas/SessionPhase'
         endedAt:
           type: string
           format: date-time
@@ -614,7 +610,6 @@ components:
           type: integer
         type:
           type: string
-          enum: [polygon, circle, tooth-ref]
         geometry:
           $ref: '#/components/schemas/AnnotationGeometry'
         findingLabel:
@@ -629,7 +624,6 @@ components:
       properties:
         type:
           type: string
-          enum: [polygon, circle, tooth-ref]
         geometry:
           $ref: '#/components/schemas/AnnotationGeometry'
         findingLabel:
@@ -639,7 +633,6 @@ components:
       properties:
         type:
           type: string
-          enum: [polygon, circle, tooth-ref]
         geometry:
           $ref: '#/components/schemas/AnnotationGeometry'
         findingLabel:
