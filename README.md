@@ -66,6 +66,9 @@ The platform combines:
 - Speech-to-text transcription of student input
 - Multi-language support
 
+### API Specification
+- OpenAPI/Swagger document: [`docs/api/openapi.yaml`](docs/api/openapi.yaml)
+
 
 ---
 
