@@ -69,7 +69,6 @@ The platform combines:
 ### API Specification
 - OpenAPI/Swagger document: [`docs/api/openapi.yaml`](docs/api/openapi.yaml)
 
-
 ---
 
 ## Architecture
