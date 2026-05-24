@@ -50,9 +50,9 @@ function App() {
   const fileInputRef = useRef(null)
   const recognitionRef = useRef(null)
   const utteranceRef = useRef(null)
+  const canvasRef = useRef(null)
 
   const [selectedFile, setSelectedFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
   const [uploadStatus, setUploadStatus] = useState('No X-ray selected yet.')
   const [sessionMode, setSessionMode] = useState('guided')
   const [session, setSession] = useState(null)
@@ -78,14 +78,6 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
-      }
-    }
-  }, [previewUrl])
-
-  useEffect(() => {
-    return () => {
       if (utteranceRef.current && window.speechSynthesis) {
         window.speechSynthesis.cancel()
       }
@@ -102,23 +94,62 @@ function App() {
     speech: typeof window !== 'undefined' && Boolean(window.speechSynthesis),
   }
 
+  useEffect(() => {
+    const canvas = canvasRef.current
+
+    if (!canvas) {
+      return undefined
+    }
+
+    const context = canvas.getContext('2d')
+    if (!selectedFile || !context) {
+      context?.clearRect(0, 0, canvas.width, canvas.height)
+      canvas.width = 0
+      canvas.height = 0
+      return undefined
+    }
+
+    const objectUrl = URL.createObjectURL(selectedFile)
+    const image = new Image()
+    let cancelled = false
+
+    image.onload = () => {
+      if (cancelled) {
+        URL.revokeObjectURL(objectUrl)
+        return
+      }
+
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.drawImage(image, 0, 0)
+      URL.revokeObjectURL(objectUrl)
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      pushLog('Preview failed', 'The selected file could not be rendered.')
+    }
+
+    image.src = objectUrl
+
+    return () => {
+      cancelled = true
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [selectedFile])
+
   const handleFileChange = (event) => {
     const file = event.target.files?.[0] || null
-
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-    }
 
     setSelectedFile(file)
 
     if (!file) {
       setUploadStatus('No X-ray selected yet.')
       pushLog('Upload cleared', 'Removed the current X-ray selection.')
-      setPreviewUrl('')
       return
     }
 
-    setPreviewUrl(URL.createObjectURL(file))
     setUploadStatus(`Loaded ${file.name} for local testing.`)
     pushLog('X-ray loaded', `${file.name} is ready for upload testing.`)
   }
@@ -268,11 +299,11 @@ function App() {
           />
 
           <div className="preview-frame">
-            {selectedFile && previewUrl ? (
-              <img
-                src={previewUrl}
-                alt="Selected X-ray preview"
-                className="preview-image"
+            {selectedFile ? (
+              <canvas
+                ref={canvasRef}
+                className="preview-canvas"
+                aria-label="Selected X-ray preview"
               />
             ) : (
               <div className="preview-placeholder">
