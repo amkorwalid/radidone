@@ -378,7 +378,7 @@ git clone https://github.com/amkorwalid/radidone.git
 cd radidone
 
 # Frontend
-cd frontend
+cd apps/web-app
 npm install
 
 # Backend
@@ -390,7 +390,7 @@ pip install -r requirements.txt
 
 ```bash
 # Frontend
-cd frontend
+cd apps/web-app
 npm run dev
 
 # Backend
