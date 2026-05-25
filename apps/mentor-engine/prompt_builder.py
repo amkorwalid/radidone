@@ -200,37 +200,43 @@ def build_observation_user_prompt(context: PromptContext) -> str:
     """Build the initial user prompt for the Observation phase."""
     student_name = context.student_name or "Student"
     
-    prompt = f"""Hello {student_name}! Welcome to your dental radiography learning session.
-
-You have a panoramic X-ray to analyze. Let's start with careful observation.
-
-Please look at the radiograph and tell me: What do you notice first? Start with the overall 
-structure of the radiograph—look at the bone levels, tooth positioning, and any obvious anomalies."""
+    base_prompt = (
+        f"Hello {student_name}! Welcome to your dental radiography learning session.\n\n"
+        f"You have a panoramic X-ray to analyze. Let's start with careful observation.\n\n"
+        f"Please look at the radiograph and tell me: What do you notice first? Start with the overall "
+        f"structure of the radiograph—look at the bone levels, tooth positioning, and any obvious anomalies."
+    )
     
-    if context.ai_predictions:
-        prompt += "\n\n(Note: An AI analysis exists but will be revealed later—right now, use your own eyes)"
+    ai_note = (
+        "\n\n(Note: An AI analysis exists but will be revealed later—right now, use your own eyes)"
+        if context.ai_predictions
+        else ""
+    )
     
-    return prompt
+    return base_prompt + ai_note
 
 
 def build_hypothesis_user_prompt(context: PromptContext) -> str:
     """Build the user prompt for the Hypothesis phase."""
     student_name = context.student_name or "Student"
     
-    prompt = f"""Good observation, {student_name}!
-
-Now that you've identified several findings, let's explore what these findings might mean clinically.
-
-Based on the anomalies you've identified, what are some possible diagnoses? 
-Think about:
-- What conditions commonly present with these findings?
-- What is the differential diagnosis?
-- Which diagnosis seems most likely based on the radiographic evidence?"""
+    base_prompt = (
+        f"Good observation, {student_name}!\n\n"
+        f"Now that you've identified several findings, let's explore what these findings might mean clinically.\n\n"
+        f"Based on the anomalies you've identified, what are some possible diagnoses? "
+        f"Think about:\n"
+        f"- What conditions commonly present with these findings?\n"
+        f"- What is the differential diagnosis?\n"
+        f"- Which diagnosis seems most likely based on the radiographic evidence?"
+    )
     
-    if context.student_annotations:
-        prompt += f"\n\nYou've annotated: {', '.join(context.student_annotations[:3])}"
+    annotations_note = (
+        f"\n\nYou've annotated: {', '.join(context.student_annotations[:3])}"
+        if context.student_annotations
+        else ""
+    )
     
-    return prompt
+    return base_prompt + annotations_note
 
 
 def build_diagnosis_user_prompt(context: PromptContext) -> str:
@@ -339,11 +345,20 @@ def build_prompt(
         SessionPhase.EVALUATION: build_evaluation_user_prompt,
     }
     
-    # Build context if not provided
+    # Build context if not provided, or create a new one to avoid mutations
     if context is None:
-        context = PromptContext(phase=phase)
+        phase_context = PromptContext(phase=phase)
     else:
-        context.phase = phase
+        # Create a new context with the phase to avoid mutating the input
+        phase_context = PromptContext(
+            phase=phase,
+            student_name=context.student_name,
+            tooth_findings=context.tooth_findings,
+            student_annotations=context.student_annotations,
+            ai_predictions=context.ai_predictions,
+            previous_responses=context.previous_responses,
+            conversation_history=context.conversation_history,
+        )
     
     # Get system prompt
     system = system_prompts.get(phase, "")
@@ -352,7 +367,7 @@ def build_prompt(
     
     # Get user prompt
     user_prompt_builder = user_prompt_builders.get(phase)
-    user = user_prompt_builder(context) if user_prompt_builder and use_user_prompt else ""
+    user = user_prompt_builder(phase_context) if user_prompt_builder and use_user_prompt else ""
     
     return Prompt(system=system, user=user, phase=phase)
 
@@ -386,7 +401,6 @@ def build_prompts_with_context(context: PromptContext) -> Dict[str, Prompt]:
     """
     prompts = {}
     for phase in SessionPhase:
-        context.phase = phase
         prompts[phase.value] = build_prompt(phase, context)
     
     return prompts
