@@ -196,14 +196,14 @@ python3 prompt_builder.py  # View all prompts
 
 Or import and test programmatically:
 ```python
-from prompt_builder import build_all_prompts, PromptContext, build_prompts_with_context
+from prompt_builder import build_all_prompts, PromptContext, build_prompts_with_context, SessionPhase
 
 # Build all prompts
 all_prompts = build_all_prompts()
 assert len(all_prompts) == 5
 
 # Build with context
-context = PromptContext(student_name="Dr. Smith")
+context = PromptContext(phase=SessionPhase.OBSERVATION, student_name="Dr. Smith")
 context_prompts = build_prompts_with_context(context)
 assert all(p.system for p in context_prompts.values())
 assert all(p.user for p in context_prompts.values())

@@ -17,7 +17,14 @@ Each phase has a system prompt (mentor behavior/instructions) and user prompts
 
 from enum import Enum
 from typing import Optional, Dict, List, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+
+
+# ── Constants ────────────────────────────────────────────────────────────────
+
+# Evaluation criteria thresholds (used in evaluation phase prompts)
+MIN_ANNOTATIONS_FOR_STRONG_OBSERVATION = 3
+MIN_ANNOTATIONS_FOR_DEVELOPING_OBSERVATION = 1
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
@@ -230,11 +237,9 @@ def build_hypothesis_user_prompt(context: PromptContext) -> str:
         f"- Which diagnosis seems most likely based on the radiographic evidence?"
     )
     
-    annotations_note = (
-        f"\n\nYou've annotated: {', '.join(context.student_annotations[:3])}"
-        if context.student_annotations
-        else ""
-    )
+    annotations_note = ""
+    if context.student_annotations and len(context.student_annotations) > 0:
+        annotations_note = f"\n\nYou've annotated: {', '.join(context.student_annotations[:3])}"
     
     return base_prompt + annotations_note
 
@@ -282,27 +287,35 @@ def build_evaluation_user_prompt(context: PromptContext) -> str:
     """Build the user prompt for the Evaluation phase."""
     student_name = context.student_name or "Student"
     
-    prompt = f"""Thank you for your thorough work, {student_name}!
-
-Let's review your session performance:
-
-Your observations were {'strong' if context.student_annotations and len(context.student_annotations) > 2 else 'developing'}
-Your diagnostic reasoning showed {'solid' if context.previous_responses else 'careful'} clinical thinking
-Your reflection on the AI findings was {'insightful' if context.ai_predictions else 'thoughtful'}
-
-Overall assessment:
-- Observation accuracy: [Score determined by session performance]
-- Hypothesis generation: [Score determined by reasoning quality]
-- Diagnostic justification: [Score determined by evidence presentation]
-- Self-reflection: [Score determined by comparison accuracy]
-
-Key learning points from this session:
-1. [Key point 1]
-2. [Key point 2]
-3. [Key point 3]
-
-Keep practicing! Consistent focused observation and systematic differential diagnosis thinking
-will strengthen your radiographic interpretation skills."""
+    # Determine observation quality based on annotation count
+    if context.student_annotations and len(context.student_annotations) >= MIN_ANNOTATIONS_FOR_STRONG_OBSERVATION:
+        observation_quality = "strong"
+    elif context.student_annotations and len(context.student_annotations) >= MIN_ANNOTATIONS_FOR_DEVELOPING_OBSERVATION:
+        observation_quality = "developing"
+    else:
+        observation_quality = "developing"
+    
+    reasoning_quality = "solid" if context.previous_responses else "careful"
+    reflection_quality = "insightful" if context.ai_predictions else "thoughtful"
+    
+    prompt = (
+        f"Thank you for your thorough work, {student_name}!\n\n"
+        f"Let's review your session performance:\n\n"
+        f"Your observations were {observation_quality}\n"
+        f"Your diagnostic reasoning showed {reasoning_quality} clinical thinking\n"
+        f"Your reflection on the AI findings was {reflection_quality}\n\n"
+        f"Overall assessment:\n"
+        f"- Observation accuracy: [Score determined by session performance]\n"
+        f"- Hypothesis generation: [Score determined by reasoning quality]\n"
+        f"- Diagnostic justification: [Score determined by evidence presentation]\n"
+        f"- Self-reflection: [Score determined by comparison accuracy]\n\n"
+        f"Key learning points from this session:\n"
+        f"1. [Key point 1]\n"
+        f"2. [Key point 2]\n"
+        f"3. [Key point 3]\n\n"
+        f"Keep practicing! Consistent focused observation and systematic differential diagnosis thinking\n"
+        f"will strengthen your radiographic interpretation skills."
+    )
     
     return prompt
 
@@ -349,16 +362,8 @@ def build_prompt(
     if context is None:
         phase_context = PromptContext(phase=phase)
     else:
-        # Create a new context with the phase to avoid mutating the input
-        phase_context = PromptContext(
-            phase=phase,
-            student_name=context.student_name,
-            tooth_findings=context.tooth_findings,
-            student_annotations=context.student_annotations,
-            ai_predictions=context.ai_predictions,
-            previous_responses=context.previous_responses,
-            conversation_history=context.conversation_history,
-        )
+        # Use dataclasses.replace() to create a modified copy without mutations
+        phase_context = replace(context, phase=phase)
     
     # Get system prompt
     system = system_prompts.get(phase, "")
