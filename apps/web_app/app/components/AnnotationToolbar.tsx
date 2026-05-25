@@ -7,7 +7,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useState } from "react";
 
 interface AnnotationToolbarProps {
   onToolChange: (tool: string) => void;

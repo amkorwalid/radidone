@@ -1,4 +1,4 @@
-import { Mic, MicOff, Square } from "lucide-react";
+import { Mic, Square } from "lucide-react";
 import { useState } from "react";
 
 interface VoiceRecorderProps {
@@ -64,11 +64,7 @@ export function VoiceRecorder({ onRecord, isLoading }: VoiceRecorderProps) {
           className="p-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Start recording"
         >
-          {isRecording ? (
-            <MicOff className="h-5 w-5" />
-          ) : (
-            <Mic className="h-5 w-5" />
-          )}
+          <Mic className="h-5 w-5" />
         </button>
       )}
     </div>
