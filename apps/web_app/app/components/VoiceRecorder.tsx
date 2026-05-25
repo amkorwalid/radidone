@@ -1,6 +1,6 @@
-import { Mic, Square } from "lucide-react";
+import { MdMic, MdStop } from "react-icons/md";
 import { useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 interface VoiceRecorderProps {
   onRecord: (blob: Blob) => void;
@@ -71,7 +71,7 @@ export function VoiceRecorder({ onRecord, isLoading }: VoiceRecorderProps) {
             className="p-3 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
             title="Stop recording"
           >
-            <Square className="h-5 w-5" />
+            <MdStop className="h-5 w-5" />
           </button>
         </>
       ) : (
@@ -81,7 +81,7 @@ export function VoiceRecorder({ onRecord, isLoading }: VoiceRecorderProps) {
           className="p-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Start recording"
         >
-          <Mic className="h-5 w-5" />
+          <MdMic className="h-5 w-5" />
         </button>
       )}
     </div>

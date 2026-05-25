@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, Image as ImageIcon, Settings } from "lucide-react";
-import toast from "react-hot-toast";
+import { MdUpload, MdImage, MdSettings } from "react-icons/md";
+import { toast } from "sonner";
 import { ChatMessage } from "../components/ChatMessage";
 import { AnnotationToolbar } from "../components/AnnotationToolbar";
 import { VoiceRecorder } from "../components/VoiceRecorder";
@@ -171,7 +171,7 @@ export default function Dashboard() {
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
-              <ImageIcon className="h-6 w-6 text-white" />
+              <MdImage className="h-6 w-6 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Radidone</h1>
@@ -186,7 +186,7 @@ export default function Dashboard() {
               </div>
             )}
             <button className="p-2 rounded-lg hover:bg-gray-800 transition-colors">
-              <Settings className="h-6 w-6 text-gray-300" />
+              <MdSettings className="h-6 w-6 text-gray-300" />
             </button>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function Dashboard() {
                       htmlFor="file-upload"
                       className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all cursor-pointer"
                     >
-                      <Upload className="h-5 w-5" />
+                      <MdUpload className="h-5 w-5" />
                       Upload X-ray
                     </label>
                     <input
@@ -335,7 +335,7 @@ export default function Dashboard() {
                 <div className="flex-1 flex items-center justify-center p-6">
                   <div className="text-center">
                     <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-blue-400 rounded-xl mx-auto mb-4 flex items-center justify-center">
-                      <ImageIcon className="h-8 w-8 text-white" />
+                      <MdImage className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-2">
                       Ready to Start?

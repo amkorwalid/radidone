@@ -1,4 +1,4 @@
-import { MessageCircle, User } from "lucide-react";
+import { MdMessage, MdPerson } from "react-icons/md";
 
 interface ChatMessageProps {
   message: string;
@@ -28,9 +28,9 @@ export function ChatMessage({
           }`}
         >
           {isMentor ? (
-            <MessageCircle className="h-4 w-4 text-white" />
+            <MdMessage className="h-4 w-4 text-white" />
           ) : (
-            <User className="h-4 w-4 text-white" />
+            <MdPerson className="h-4 w-4 text-white" />
           )}
         </div>
         <div className={`flex flex-col ${isMentor ? "items-start" : "items-end"}`}>

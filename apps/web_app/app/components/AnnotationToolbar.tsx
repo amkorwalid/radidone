@@ -1,12 +1,12 @@
 import {
-  Pen,
-  Circle,
-  Undo2,
-  Redo2,
-  Trash2,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+  MdEdit,
+  MdCircle,
+  MdUndo,
+  MdRedo,
+  MdDelete,
+  MdVisibility,
+  MdVisibilityOff,
+} from "react-icons/md";
 
 interface AnnotationToolbarProps {
   onToolChange: (tool: string) => void;
@@ -32,9 +32,9 @@ export function AnnotationToolbar({
   canRedo,
 }: AnnotationToolbarProps) {
   const tools = [
-    { id: "polygon", icon: Pen, label: "Polygon" },
-    { id: "circle", icon: Circle, label: "Circle" },
-    { id: "label", icon: Pen, label: "Tooth Label" },
+    { id: "polygon", icon: MdEdit, label: "Polygon" },
+    { id: "circle", icon: MdCircle, label: "Circle" },
+    { id: "label", icon: MdEdit, label: "Tooth Label" },
   ];
 
   return (
@@ -74,7 +74,7 @@ export function AnnotationToolbar({
             className="p-2 rounded-lg bg-zinc-700 text-gray-300 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Undo"
           >
-            <Undo2 className="h-4 w-4" />
+            <MdUndo className="h-4 w-4" />
           </button>
           <button
             onClick={onRedo}
@@ -82,7 +82,7 @@ export function AnnotationToolbar({
             className="p-2 rounded-lg bg-zinc-700 text-gray-300 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Redo"
           >
-            <Redo2 className="h-4 w-4" />
+            <MdRedo className="h-4 w-4" />
           </button>
           <button
             onClick={onToggleLayer}
@@ -90,9 +90,9 @@ export function AnnotationToolbar({
             title={layerVisible ? "Hide layer" : "Show layer"}
           >
             {layerVisible ? (
-              <Eye className="h-4 w-4" />
+              <MdVisibility className="h-4 w-4" />
             ) : (
-              <EyeOff className="h-4 w-4" />
+              <MdVisibilityOff className="h-4 w-4" />
             )}
           </button>
           <button
@@ -100,7 +100,7 @@ export function AnnotationToolbar({
             className="p-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
             title="Clear all"
           >
-            <Trash2 className="h-4 w-4" />
+            <MdDelete className="h-4 w-4" />
           </button>
         </div>
       </div>
