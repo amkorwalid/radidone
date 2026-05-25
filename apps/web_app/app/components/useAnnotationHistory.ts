@@ -5,35 +5,44 @@ interface AnnotationAction {
   data: unknown;
 }
 
-export function useAnnotationHistory() {
-  const [history, setHistory] = useState<AnnotationAction[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+interface HistoryState {
+  history: AnnotationAction[];
+  index: number;
+}
 
-  const addAction = useCallback(
-    (action: AnnotationAction) => {
-      const newHistory = history.slice(0, historyIndex + 1);
+export function useAnnotationHistory() {
+  const [state, setState] = useState<HistoryState>({
+    history: [],
+    index: -1,
+  });
+
+  const addAction = useCallback((action: AnnotationAction) => {
+    setState((prevState) => {
+      const newHistory = prevState.history.slice(0, prevState.index + 1);
       newHistory.push(action);
-      setHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-    },
-    [history, historyIndex]
-  );
+      return {
+        history: newHistory,
+        index: newHistory.length - 1,
+      };
+    });
+  }, []);
 
   const undo = useCallback(() => {
-    if (historyIndex >= 0) {
-      setHistoryIndex(historyIndex - 1);
-    }
-  }, [historyIndex]);
+    setState((prevState) => ({
+      ...prevState,
+      index: Math.max(-1, prevState.index - 1),
+    }));
+  }, []);
 
   const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(historyIndex + 1);
-    }
-  }, [historyIndex, history.length]);
+    setState((prevState) => ({
+      ...prevState,
+      index: Math.min(prevState.history.length - 1, prevState.index + 1),
+    }));
+  }, []);
 
   const clear = useCallback(() => {
-    setHistory([]);
-    setHistoryIndex(-1);
+    setState({ history: [], index: -1 });
   }, []);
 
   return {
@@ -41,8 +50,8 @@ export function useAnnotationHistory() {
     undo,
     redo,
     clear,
-    canUndo: historyIndex >= 0,
-    canRedo: historyIndex < history.length - 1,
-    currentAction: historyIndex >= 0 ? history[historyIndex] : null,
+    canUndo: state.index >= 0,
+    canRedo: state.index < state.history.length - 1,
+    currentAction: state.index >= 0 ? state.history[state.index] : null,
   };
 }

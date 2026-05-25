@@ -1,5 +1,6 @@
 import { Mic, Square } from "lucide-react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 interface VoiceRecorderProps {
   onRecord: (blob: Blob) => void;
@@ -31,6 +32,11 @@ export function VoiceRecorder({ onRecord, isLoading }: VoiceRecorderProps) {
       setIsRecording(true);
     } catch (error) {
       console.error("Error accessing microphone:", error);
+      const errorMessage =
+        error instanceof Error && error.name === "NotAllowedError"
+          ? "Microphone access denied. Please enable microphone permissions."
+          : "Unable to access microphone. Please check your device settings.";
+      toast.error(errorMessage);
     }
   };
 
