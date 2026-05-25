@@ -43,7 +43,6 @@ export default function Dashboard() {
     clear,
     canUndo,
     canRedo,
-    addAction,
   } = useAnnotationHistory();
 
   const phases = [
@@ -138,18 +137,11 @@ export default function Dashboard() {
 
   const handleVoiceRecord = (blob: Blob) => {
     toast.success("Voice message recorded");
-    addAction({
-      type: "voice_message",
-      data: blob,
-    });
+    // In a real app, send the audio blob to the backend for transcription
   };
 
   const handleAnnotationToolChange = (tool: string) => {
     setSelectedTool(tool);
-    addAction({
-      type: "tool_change",
-      data: tool,
-    });
     toast.success(`Switched to ${tool} tool`);
   };
 
