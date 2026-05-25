@@ -238,7 +238,7 @@ def build_hypothesis_user_prompt(context: PromptContext) -> str:
     )
     
     annotations_note = ""
-    if context.student_annotations and len(context.student_annotations) > 0:
+    if context.student_annotations:
         annotations_note = f"\n\nYou've annotated: {', '.join(context.student_annotations[:3])}"
     
     return base_prompt + annotations_note
@@ -288,12 +288,11 @@ def build_evaluation_user_prompt(context: PromptContext) -> str:
     student_name = context.student_name or "Student"
     
     # Determine observation quality based on annotation count
-    if context.student_annotations and len(context.student_annotations) >= MIN_ANNOTATIONS_FOR_STRONG_OBSERVATION:
-        observation_quality = "strong"
-    elif context.student_annotations and len(context.student_annotations) >= MIN_ANNOTATIONS_FOR_DEVELOPING_OBSERVATION:
-        observation_quality = "developing"
-    else:
-        observation_quality = "developing"
+    observation_quality = (
+        "strong"
+        if context.student_annotations and len(context.student_annotations) >= MIN_ANNOTATIONS_FOR_STRONG_OBSERVATION
+        else "developing"
+    )
     
     reasoning_quality = "solid" if context.previous_responses else "careful"
     reflection_quality = "insightful" if context.ai_predictions else "thoughtful"
