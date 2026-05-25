@@ -1,7 +1,11 @@
 import json
+import re
+from urllib import response
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+
+from sympy import re
 
 load_dotenv()  
 
@@ -24,4 +28,3 @@ def deepseek_mentor(system_prompt: str, user_prompt: str) -> dict:
     )
 
     return json.loads(response.choices[0].message.content)
-

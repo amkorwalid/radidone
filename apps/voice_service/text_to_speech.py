@@ -7,10 +7,10 @@ import os
 
 load_dotenv()
 
-def text_to_speech_openai(text, voice="alloy", instructions="Speak like a mentor."):
+def text_to_speech_openai(text, audi_name, output_path, voice="alloy", instructions="Speak like a mentor."):
     
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    speech_file_path = Path(__file__).parent / "speech.mp3"
+    speech_file_path = f"{output_path}/{audi_name}.mp3"
 
     with client.audio.speech.with_streaming_response.create(
         model="gpt-4o-mini-tts",
