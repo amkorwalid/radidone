@@ -3,11 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, Image as ImageIcon, Settings } from "lucide-react";
 import toast from "react-hot-toast";
-import { ChatMessage } from "./components/ChatMessage";
-import { AnnotationToolbar } from "./components/AnnotationToolbar";
-import { VoiceRecorder } from "./components/VoiceRecorder";
-import { ChatSkeleton, ImageUploadSkeleton } from "./components/LoadingIndicators";
-import { useAnnotationHistory } from "./components/useAnnotationHistory";
+import { ChatMessage } from "../components/ChatMessage";
+import { AnnotationToolbar } from "../components/AnnotationToolbar";
+import { VoiceRecorder } from "../components/VoiceRecorder";
+import { ChatSkeleton, ImageUploadSkeleton } from "../components/LoadingIndicators";
+import { useAnnotationHistory } from "../components/useAnnotationHistory";
 
 interface Message {
   id: string;
@@ -138,7 +138,6 @@ export default function Dashboard() {
 
   const handleVoiceRecord = (blob: Blob) => {
     toast.success("Voice message recorded");
-    // In a real app, send the audio blob to the backend
     addAction({
       type: "voice_message",
       data: blob,
