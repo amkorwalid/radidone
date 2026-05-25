@@ -1,8 +1,8 @@
 export function ChatSkeleton() {
   return (
     <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
           <div className="w-32 h-10 bg-zinc-700 rounded-lg animate-pulse"></div>
         </div>
       ))}

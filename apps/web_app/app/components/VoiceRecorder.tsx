@@ -11,10 +11,21 @@ export function VoiceRecorder({ onRecord, isLoading }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
 
+  const getMimeType = () => {
+    const types = ["audio/webm", "audio/mp4", "audio/ogg"];
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return "audio/webm"; // fallback
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const mimeType = getMimeType();
+      const recorder = new MediaRecorder(stream, { mimeType });
       const chunks: Blob[] = [];
 
       recorder.ondataavailable = (e) => {
@@ -22,7 +33,7 @@ export function VoiceRecorder({ onRecord, isLoading }: VoiceRecorderProps) {
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
+        const blob = new Blob(chunks, { type: mimeType });
         onRecord(blob);
         stream.getTracks().forEach((track) => track.stop());
       };
