@@ -20,7 +20,7 @@ export function useAnnotationHistory() {
   );
 
   const undo = useCallback(() => {
-    if (historyIndex > 0) {
+    if (historyIndex >= 0) {
       setHistoryIndex(historyIndex - 1);
     }
   }, [historyIndex]);
@@ -41,7 +41,7 @@ export function useAnnotationHistory() {
     undo,
     redo,
     clear,
-    canUndo: historyIndex > 0,
+    canUndo: historyIndex >= 0,
     canRedo: historyIndex < history.length - 1,
     currentAction: historyIndex >= 0 ? history[historyIndex] : null,
   };
