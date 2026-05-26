@@ -78,7 +78,7 @@ export function VoiceRecorder({ onRecord, isLoading }: VoiceRecorderProps) {
         <button
           onClick={startRecording}
           disabled={isLoading}
-          className="p-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-3 rounded-full bg-white text-black hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Start recording"
         >
           <MdMic className="h-5 w-5" />

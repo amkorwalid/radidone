@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MdUpload, MdImage, MdSettings } from "react-icons/md";
+import { MdUpload, MdImage } from "react-icons/md";
 import { toast } from "sonner";
 import { ChatMessage } from "../components/ChatMessage";
 import { AnnotationToolbar } from "../components/AnnotationToolbar";
 import { VoiceRecorder } from "../components/VoiceRecorder";
 import { ChatSkeleton, ImageUploadSkeleton } from "../components/LoadingIndicators";
-import { useAnnotationHistory } from "../components/useAnnotationHistory";
+import Image from "next/image";
 
 interface Message {
   id: string;
@@ -32,18 +32,8 @@ export default function Dashboard() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentPhase, setCurrentPhase] = useState("Observation");
-  const [selectedTool, setSelectedTool] = useState("polygon");
-  const [layerVisible, setLayerVisible] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const {
-    undo,
-    redo,
-    clear,
-    canUndo,
-    canRedo,
-  } = useAnnotationHistory();
 
   const phases = [
     "Observation",
@@ -136,59 +126,20 @@ export default function Dashboard() {
   };
 
   const handleVoiceRecord = (blob: Blob) => {
+    void blob;
     toast.success("Voice message recorded");
     // In a real app, send the audio blob to the backend for transcription
   };
 
-  const handleAnnotationToolChange = (tool: string) => {
-    setSelectedTool(tool);
-    toast.success(`Switched to ${tool} tool`);
-  };
-
-  const handleUndo = () => {
-    undo();
-    toast.success("Action undone");
-  };
-
-  const handleRedo = () => {
-    redo();
-    toast.success("Action redone");
-  };
-
-  const handleClearAnnotations = () => {
-    clear();
-    toast.success("All annotations cleared");
-  };
-
-  const handleToggleLayer = () => {
-    setLayerVisible(!layerVisible);
-  };
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <main className="min-h-screen bg-black">
       {/* Header */}
       <header className="bg-black border-b border-gray-800 sticky top-0 z-50">
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
-              <MdImage className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Radidone</h1>
-              <p className="text-xs text-gray-400">Dental X-ray Training</p>
-            </div>
+            <h1 className="text-2xl font-medium text-white">Radidone</h1>
           </div>
-          <div className="flex items-center gap-4">
-            {session && (
-              <div className="text-right">
-                <p className="text-sm text-gray-400">Current Phase</p>
-                <p className="text-lg font-semibold text-blue-400">{currentPhase}</p>
-              </div>
-            )}
-            <button className="p-2 rounded-lg hover:bg-gray-800 transition-colors">
-              <MdSettings className="h-6 w-6 text-gray-300" />
-            </button>
-          </div>
+          
         </div>
       </header>
 
@@ -197,18 +148,25 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
           {/* Image and Annotation Panel */}
           <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
+              {/* Annotation Toolbar */}
+            {session && imagePreview && (
+              <div>
+                <AnnotationToolbar />
+              </div>
+            )}
             {/* Image Area */}
-            <div className="flex-1 bg-gradient-to-br from-zinc-900 to-zinc-950 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
+            <div className="flex-1 bg-linear-to-br from-zinc-900 to-zinc-950 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
               {imagePreview ? (
                 <div className="flex-1 overflow-auto relative">
-                  <img
-                    src={imagePreview}
-                    alt="X-ray"
-                    className="w-full h-full object-contain"
-                  />
+                  
+                  <Image 
+                    src={imagePreview} 
+                    fill
+                    alt="X-ray" 
+                    className="w-full p-8 object-contain" />
                   {session && (
                     <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 px-3 py-1 rounded-lg text-xs text-gray-300">
-                      {layerVisible ? "Annotations visible" : "Annotations hidden"}
+                      Annotations visible
                     </div>
                   )}
                 </div>
@@ -218,7 +176,7 @@ export default function Dashboard() {
                     <ImageUploadSkeleton />
                     <label
                       htmlFor="file-upload"
-                      className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all cursor-pointer"
+                      className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all cursor-pointer"
                     >
                       <MdUpload className="h-5 w-5" />
                       Upload X-ray
@@ -235,32 +193,15 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-
-            {/* Annotation Toolbar */}
-            {session && imagePreview && (
-              <div>
-                <AnnotationToolbar
-                  onToolChange={handleAnnotationToolChange}
-                  onUndo={handleUndo}
-                  onRedo={handleRedo}
-                  onClear={handleClearAnnotations}
-                  onToggleLayer={handleToggleLayer}
-                  layerVisible={layerVisible}
-                  selectedTool={selectedTool}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                />
-              </div>
-            )}
           </div>
 
           {/* Chat and Session Panel */}
           <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
-            <div className="flex-1 bg-gradient-to-br from-zinc-900 to-zinc-950 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
+            <div className="flex-1 bg-linear-to-br from-zinc-900 to-zinc-950 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
               {session && imagePreview ? (
                 <>
                   {/* Phase Progress */}
-                  <div className="px-4 pt-4 pb-2 border-b border-gray-700">
+                  {/* <div className="px-4 pt-4 pb-2 border-b border-gray-700">
                     <div className="text-xs text-gray-400 mb-2">Session Progress</div>
                     <div className="flex gap-1">
                       {phases.map((phase, index) => (
@@ -274,7 +215,7 @@ export default function Dashboard() {
                         />
                       ))}
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -286,17 +227,16 @@ export default function Dashboard() {
                           key={msg.id}
                           message={msg.text}
                           sender={msg.sender}
-                          timestamp={msg.timestamp}
                           isLoading={msg.isLoading}
                         />
                       ))
                     )}
                     {isLoading && (
                       <div className="flex justify-start">
-                        <div className="flex gap-2 items-center px-4 py-2 rounded-lg bg-blue-600">
-                          <div className="h-2 w-2 bg-white rounded-full animate-bounce"></div>
-                          <div className="h-2 w-2 bg-white rounded-full animate-bounce delay-100"></div>
-                          <div className="h-2 w-2 bg-white rounded-full animate-bounce delay-200"></div>
+                        <div className="flex gap-1 items-center p-2 rounded-lg bg-black text-white">
+                          <div className="h-1 w-1 bg-white rounded-full animate-bounce"></div>
+                          <div className="h-1 w-1 bg-white rounded-full animate-bounce delay-100"></div>
+                          <div className="h-1 w-1 bg-white rounded-full animate-bounce delay-200"></div>
                         </div>
                       </div>
                     )}
@@ -314,13 +254,13 @@ export default function Dashboard() {
                           e.key === "Enter" && handleSendMessage()
                         }
                         placeholder="Type your response..."
-                        className="flex-1 px-3 py-2 bg-zinc-800 text-white rounded-lg border border-gray-700 focus:border-blue-600 focus:outline-none transition-colors text-sm"
+                        className="flex-1 px-3 py-2 bg-zinc-800 text-white rounded-lg border border-gray-700 focus:border-white focus:outline-none transition-colors text-sm"
                         disabled={isLoading}
                       />
                       <button
                         onClick={handleSendMessage}
                         disabled={isLoading || !inputValue.trim()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                        className="px-4 py-2 bg-white text-black rounded-lg disabled:bg-zinc-800 disabled:text-white disabled:cursor-not-allowed transition-colors font-medium text-sm"
                       >
                         Send
                       </button>
@@ -334,7 +274,7 @@ export default function Dashboard() {
               ) : (
                 <div className="flex-1 flex items-center justify-center p-6">
                   <div className="text-center">
-                    <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-blue-400 rounded-xl mx-auto mb-4 flex items-center justify-center">
+                    <div className="h-16 w-16 bg-black rounded-xl mx-auto mb-4 flex items-center justify-center">
                       <MdImage className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-2">
@@ -346,7 +286,7 @@ export default function Dashboard() {
                     {image && (
                       <button
                         onClick={startSession}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg hover:from-green-700 hover:to-green-600 transition-all font-medium"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:from-green-700 hover:to-green-600 transition-all font-medium"
                       >
                         Start Session
                       </button>
