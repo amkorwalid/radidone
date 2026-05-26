@@ -91,7 +91,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
   const [options, setOptions] = useState<ToolbarOptions>(DEFAULT_OPTIONS);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const handleOptionChange = (key: keyof ToolbarOptions, value: ToolbarOptions[keyof ToolbarOptions]): void => {
+  const handleOptionChange = <K extends keyof ToolbarOptions>(key: K, value: ToolbarOptions[K]): void => {
     const newOptions = { ...options, [key]: value };
     setOptions(newOptions);
     onOptionsChange?.(newOptions);
@@ -297,16 +297,6 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
                 UL
               </button>
               <button
-                onClick={() => handleQuadrantSelect("LR")}
-                className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                  options.quadrantIsolation === "LR"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                LR
-              </button>
-              <button
                 onClick={() => handleQuadrantSelect("LL")}
                 className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
                   options.quadrantIsolation === "LL"
@@ -315,6 +305,16 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
                 }`}
               >
                 LL
+              </button>
+              <button
+                onClick={() => handleQuadrantSelect("LR")}
+                className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                  options.quadrantIsolation === "LR"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                }`}
+              >
+                LR
               </button>
             </div>
           </div>
