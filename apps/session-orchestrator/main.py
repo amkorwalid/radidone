@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 import sys
 import tempfile
@@ -30,6 +31,7 @@ PHASE_SEQUENCE = ["observation", "hypothesis", "diagnosis", "reflection", "evalu
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 TTS_DIR = STATIC_DIR / "tts"
 TTS_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_AUDIO_SUFFIXES = {".webm", ".ogg", ".mp3", ".wav", ".m4a"}
 
 
 class SessionStatus(str, Enum):
@@ -341,7 +343,11 @@ store = InMemoryStore()
 app = FastAPI(title="Radidone Session Orchestrator", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin for origin in os.getenv("RADIDONE_CORS_ORIGINS", "*").split(",") if origin],
+    allow_origins=[
+        origin.strip()
+        for origin in os.getenv("RADIDONE_CORS_ORIGINS", "http://localhost:3000").split(",")
+        if origin.strip()
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -429,7 +435,7 @@ def maybe_generate_audio(sequence: MentorSequence) -> List[str]:
     for idx, item in enumerate(sequence.sequence):
         if item.type != "text" or not item.value:
             continue
-        filename = f"mentor_{datetime.now(timezone.utc).timestamp()}_{idx}"
+        filename = f"mentor_{int(datetime.now(timezone.utc).timestamp())}_{idx}"
         try:
             path = text_to_speech_openai(item.value, filename, str(TTS_DIR))
             audio_urls.append(f"/static/tts/{Path(path).name}")
@@ -613,7 +619,10 @@ def create_mentor_response(session_id: int, payload: MentorRequest) -> MentorRes
 @app.post("/api/sessions/{session_id}/voice", response_model=VoiceMentorResponse, status_code=201)
 async def submit_voice(session_id: int, audio: UploadFile = File(...)) -> VoiceMentorResponse:
     require_session(session_id)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(audio.filename or "audio").suffix) as tmp:
+    suffix = Path(audio.filename or "audio").suffix.lower()
+    if suffix not in ALLOWED_AUDIO_SUFFIXES:
+        suffix = ".webm"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(await audio.read())
         temp_path = tmp.name
 
@@ -659,7 +668,10 @@ async def voice_socket(websocket: WebSocket) -> None:
                 await websocket.send_json({"error": "sessionId and audioBase64 required"})
                 continue
             audio_bytes = base64.b64decode(audio_b64)
-            with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp:
+            suffix = Path(filename).suffix.lower()
+            if suffix not in ALLOWED_AUDIO_SUFFIXES:
+                suffix = ".webm"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(audio_bytes)
                 temp_path = tmp.name
             transcript = None

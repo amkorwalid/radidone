@@ -49,6 +49,12 @@ interface CanvasEvent {
   params?: Record<string, unknown>;
 }
 
+interface AnalysisSummary {
+  teeth?: {
+    present?: number;
+  };
+}
+
 const initialCanvasState: CanvasState = {
   illnessPoolVisible: false,
 };
@@ -300,8 +306,7 @@ export default function Dashboard() {
   };
 
   const sessionActive = Boolean(sessionId);
-  const analysisSummary = (analysis?.analysisJson as { summary?: { teeth?: { present?: number } } })
-    ?.summary;
+  const analysisSummary = (analysis?.analysisJson as { summary?: AnalysisSummary })?.summary;
 
   return (
     <main className="min-h-screen bg-black">
@@ -433,10 +438,15 @@ export default function Dashboard() {
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
                         placeholder="Type your response..."
                         className="flex-1 px-3 py-2 bg-zinc-800 text-white rounded-lg border border-gray-700 focus:border-white focus:outline-none transition-colors text-sm"
-                        disabled={isLoading}
+                        disabled={isLoading || !inputValue.trim()}
                       />
                       <button
                         onClick={handleSendMessage}
