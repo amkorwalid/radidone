@@ -439,18 +439,18 @@ export default function Dashboard() {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
+                          if (e.key === "Enter" && !e.shiftKey && inputValue.trim()) {
                             e.preventDefault();
                             handleSendMessage();
                           }
                         }}
                         placeholder="Type your response..."
                         className="flex-1 px-3 py-2 bg-zinc-800 text-white rounded-lg border border-gray-700 focus:border-white focus:outline-none transition-colors text-sm"
-                        disabled={isLoading || !inputValue.trim()}
+                        disabled={isLoading}
                       />
                       <button
                         onClick={handleSendMessage}
-                        disabled={isLoading}
+                        disabled={isLoading || !inputValue.trim()}
                         className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                       >
                         Send

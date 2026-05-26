@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 import sys
 import tempfile
@@ -25,6 +26,10 @@ from mentor_engine.report_builder import build_report
 from mentor_engine.mentors import deepseek_mentor
 from voice_service.speech_to_text import speech_to_text_openai
 from voice_service.text_to_speech import text_to_speech_openai
+
+LOG_LEVEL = os.getenv("RADIDONE_LOG_LEVEL", "INFO").upper()
+logging.basicConfig(level=LOG_LEVEL)
+logger = logging.getLogger("radidone.session_orchestrator")
 
 DEFAULT_USER_ID = 1
 PHASE_SEQUENCE = ["observation", "hypothesis", "diagnosis", "reflection", "evaluation"]
@@ -406,8 +411,8 @@ def generate_mentor_sequence(system_prompt: str, user_message: str) -> MentorSeq
     if os.getenv("DEEPSEEK_API_KEY"):
         try:
             return normalize_sequence(deepseek_mentor(system_prompt, user_message))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.exception("Mentor generation failed: %s", exc)
     fallback = {
         "sequence": [
             {
@@ -439,8 +444,8 @@ def maybe_generate_audio(sequence: MentorSequence) -> List[str]:
         try:
             path = text_to_speech_openai(item.value, filename, str(TTS_DIR))
             audio_urls.append(f"/static/tts/{Path(path).name}")
-        except Exception:
-            continue
+        except Exception as exc:
+            logger.exception("TTS generation failed: %s", exc)
     return audio_urls
 
 
@@ -529,11 +534,16 @@ async def create_image(
 
     raw_analysis: Dict[str, Any]
     normalized: Dict[str, Any]
-    if os.getenv("THAKAAMED_API_KEY") and os.getenv("THAKAAMED_API_BASE"):
+    if (
+        os.getenv("THAKAAMED_API_KEY")
+        and os.getenv("THAKAAMED_API_BASE")
+        and os.getenv("THAKAAMED_API_FACILITY")
+    ):
         try:
             slug = upload_image(temp_path)
             raw_analysis, normalized = analyze_and_normalize(slug)
-        except Exception:
+        except Exception as exc:
+            logger.exception("Image analysis failed, falling back to mock: %s", exc)
             raw_analysis = build_mock_analysis()
             normalized = normalize_analysis(raw_analysis)
     else:
@@ -630,7 +640,8 @@ async def submit_voice(session_id: int, audio: UploadFile = File(...)) -> VoiceM
     if os.getenv("OPENAI_API_KEY"):
         try:
             transcript = speech_to_text_openai(temp_path)
-        except Exception:
+        except Exception as exc:
+            logger.exception("Speech-to-text failed: %s", exc)
             transcript = None
 
     mentor_response = handle_student_message(session_id, transcript or "Voice input received.", transcript)
@@ -663,22 +674,19 @@ async def voice_socket(websocket: WebSocket) -> None:
             payload = await websocket.receive_json()
             session_id = payload.get("sessionId")
             audio_b64 = payload.get("audioBase64")
-            filename = payload.get("filename", "voice.webm")
             if not session_id or not audio_b64:
                 await websocket.send_json({"error": "sessionId and audioBase64 required"})
                 continue
             audio_bytes = base64.b64decode(audio_b64)
-            suffix = Path(filename).suffix.lower()
-            if suffix not in ALLOWED_AUDIO_SUFFIXES:
-                suffix = ".webm"
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
                 tmp.write(audio_bytes)
                 temp_path = tmp.name
             transcript = None
             if os.getenv("OPENAI_API_KEY"):
                 try:
                     transcript = speech_to_text_openai(temp_path)
-                except Exception:
+                except Exception as exc:
+                    logger.exception("Speech-to-text failed in websocket: %s", exc)
                     transcript = None
             response = handle_student_message(int(session_id), transcript or "Voice input received.", transcript)
             await websocket.send_json(jsonable_encoder(response))
