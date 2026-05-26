@@ -3,6 +3,7 @@ import time
 from dotenv import load_dotenv
 import os
 from pathlib import Path
+from typing import Any, Dict, Tuple
 
 from image_service.normalize_analysis import normalize_analysis
 
@@ -26,6 +27,6 @@ def analyze(slug):
     raise TimeoutError(f"Analysis {slug} not complete after 3 minutes")
 
 
-def analyze_and_normalize(slug):
+def analyze_and_normalize(slug: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     raw = analyze(slug)
     return raw, normalize_analysis(raw)

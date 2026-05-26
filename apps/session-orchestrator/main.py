@@ -367,6 +367,28 @@ def require_session(session_id: int) -> Session:
     return session
 
 
+def cleanup_temp_file(path: str) -> None:
+    try:
+        Path(path).unlink(missing_ok=True)
+    except Exception as exc:
+        logger.warning("Failed to cleanup temp file %s: %s", path, exc)
+
+
+def audio_suffix_from_content_type(content_type: Optional[str]) -> str:
+    mapping = {
+        "audio/webm": ".webm",
+        "audio/ogg": ".ogg",
+        "audio/mpeg": ".mp3",
+        "audio/mp3": ".mp3",
+        "audio/wav": ".wav",
+        "audio/x-wav": ".wav",
+        "audio/mp4": ".m4a",
+        "audio/x-m4a": ".m4a",
+    }
+    suffix = mapping.get((content_type or "").lower(), ".webm")
+    return suffix if suffix in ALLOWED_AUDIO_SUFFIXES else ".webm"
+
+
 def build_mock_analysis() -> Dict[str, Any]:
     return {
         "id": "mock-analysis",
@@ -528,27 +550,32 @@ async def create_image(
             meta_payload = {"raw": metadata}
 
     image = store.create_image(session.id, meta_payload)
+    temp_path = None
     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename or "upload").suffix) as tmp:
         tmp.write(await file.read())
         temp_path = tmp.name
 
-    raw_analysis: Dict[str, Any]
-    normalized: Dict[str, Any]
-    if (
-        os.getenv("THAKAAMED_API_KEY")
-        and os.getenv("THAKAAMED_API_BASE")
-        and os.getenv("THAKAAMED_API_FACILITY")
-    ):
-        try:
-            slug = upload_image(temp_path)
-            raw_analysis, normalized = analyze_and_normalize(slug)
-        except Exception as exc:
-            logger.exception("Image analysis failed, falling back to mock: %s", exc)
+    try:
+        raw_analysis: Dict[str, Any]
+        normalized: Dict[str, Any]
+        if (
+            os.getenv("THAKAAMED_API_KEY")
+            and os.getenv("THAKAAMED_API_BASE")
+            and os.getenv("THAKAAMED_API_FACILITY")
+        ):
+            try:
+                slug = upload_image(temp_path)
+                raw_analysis, normalized = analyze_and_normalize(slug)
+            except Exception as exc:
+                logger.exception("Image analysis failed, falling back to mock: %s", exc)
+                raw_analysis = build_mock_analysis()
+                normalized = normalize_analysis(raw_analysis)
+        else:
             raw_analysis = build_mock_analysis()
             normalized = normalize_analysis(raw_analysis)
-    else:
-        raw_analysis = build_mock_analysis()
-        normalized = normalize_analysis(raw_analysis)
+    finally:
+        if temp_path:
+            cleanup_temp_file(temp_path)
 
     store.create_analysis(image.id, normalized)
     prompt = ensure_prompt(session.id, raw_analysis)
@@ -629,20 +656,23 @@ def create_mentor_response(session_id: int, payload: MentorRequest) -> MentorRes
 @app.post("/api/sessions/{session_id}/voice", response_model=VoiceMentorResponse, status_code=201)
 async def submit_voice(session_id: int, audio: UploadFile = File(...)) -> VoiceMentorResponse:
     require_session(session_id)
-    suffix = Path(audio.filename or "audio").suffix.lower()
-    if suffix not in ALLOWED_AUDIO_SUFFIXES:
-        suffix = ".webm"
+    suffix = audio_suffix_from_content_type(audio.content_type)
+    temp_path = None
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(await audio.read())
         temp_path = tmp.name
 
     transcript = None
-    if os.getenv("OPENAI_API_KEY"):
-        try:
-            transcript = speech_to_text_openai(temp_path)
-        except Exception as exc:
-            logger.exception("Speech-to-text failed: %s", exc)
-            transcript = None
+    try:
+        if os.getenv("OPENAI_API_KEY"):
+            try:
+                transcript = speech_to_text_openai(temp_path)
+            except Exception as exc:
+                logger.exception("Speech-to-text failed: %s", exc)
+                transcript = None
+    finally:
+        if temp_path:
+            cleanup_temp_file(temp_path)
 
     mentor_response = handle_student_message(session_id, transcript or "Voice input received.", transcript)
     audio_voice = store.create_audio_voice(session_id, mentor_response.studentTurn.id, transcript)
@@ -678,16 +708,21 @@ async def voice_socket(websocket: WebSocket) -> None:
                 await websocket.send_json({"error": "sessionId and audioBase64 required"})
                 continue
             audio_bytes = base64.b64decode(audio_b64)
+            temp_path = None
             with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
                 tmp.write(audio_bytes)
                 temp_path = tmp.name
             transcript = None
-            if os.getenv("OPENAI_API_KEY"):
-                try:
-                    transcript = speech_to_text_openai(temp_path)
-                except Exception as exc:
-                    logger.exception("Speech-to-text failed in websocket: %s", exc)
-                    transcript = None
+            try:
+                if os.getenv("OPENAI_API_KEY"):
+                    try:
+                        transcript = speech_to_text_openai(temp_path)
+                    except Exception as exc:
+                        logger.exception("Speech-to-text failed in websocket: %s", exc)
+                        transcript = None
+            finally:
+                if temp_path:
+                    cleanup_temp_file(temp_path)
             response = handle_student_message(int(session_id), transcript or "Voice input received.", transcript)
             await websocket.send_json(jsonable_encoder(response))
     except WebSocketDisconnect:

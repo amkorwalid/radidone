@@ -72,7 +72,7 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, options);
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(error || `Request failed with ${response.status}`);
+    throw new Error(`Request to ${path} failed with ${response.status}: ${error || response.statusText}`);
   }
   return response.json() as Promise<T>;
 }
