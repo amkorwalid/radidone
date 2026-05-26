@@ -15,6 +15,9 @@ import {
 // Constants
 const MIN_ZOOM_SCALE = 1;
 const MAX_ZOOM_SCALE = 4;
+const SEVERITY_LEVELS = ["high", "moderate", "low", "none"] as const;
+const QUADRANT_OPTIONS = ["All", "UR", "UL", "LL", "LR"] as const;
+const QUADRANT_VALUES: Array<"UR" | "UL" | "LL" | "LR" | null> = [null, "UR", "UL", "LL", "LR"];
 
 interface ToolbarOptions {
   // Rendering controls
@@ -266,56 +269,22 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
               Isolate Quadrant
             </label>
             <div className="grid grid-cols-5 gap-2">
-              <button
-                onClick={() => handleQuadrantSelect(null)}
-                className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                  options.quadrantIsolation === null
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => handleQuadrantSelect("UR")}
-                className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                  options.quadrantIsolation === "UR"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                UR
-              </button>
-              <button
-                onClick={() => handleQuadrantSelect("UL")}
-                className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                  options.quadrantIsolation === "UL"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                UL
-              </button>
-              <button
-                onClick={() => handleQuadrantSelect("LL")}
-                className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                  options.quadrantIsolation === "LL"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                LL
-              </button>
-              <button
-                onClick={() => handleQuadrantSelect("LR")}
-                className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                  options.quadrantIsolation === "LR"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                LR
-              </button>
+              {QUADRANT_OPTIONS.map((quadrant, index) => {
+                const quadValue = QUADRANT_VALUES[index] as "UR" | "UL" | "LL" | "LR" | null;
+                return (
+                  <button
+                    key={quadrant}
+                    onClick={() => handleQuadrantSelect(quadValue)}
+                    className={`py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                      options.quadrantIsolation === quadValue
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                    }`}
+                  >
+                    {quadrant}
+                  </button>
+                );
+              })}
             </div>
             <div className="mt-2">
               <label className="block text-xs font-semibold text-gray-300 mb-1">
@@ -339,12 +308,10 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
               Severity Levels
             </label>
             <div className="grid grid-cols-4 gap-2">
-              {(
-                ["high", "moderate", "low", "none"] as Array<keyof typeof options.severityFilter>
-              ).map((level) => (
+              {SEVERITY_LEVELS.map((level) => (
                 <button
                   key={level}
-                  onClick={() => handleSeverityFilterChange(level)}
+                  onClick={() => handleSeverityFilterChange(level as keyof typeof options.severityFilter)}
                   className={`py-1.5 px-2 rounded text-xs font-medium transition-colors capitalize ${
                     options.severityFilter[level]
                       ? "bg-blue-600 text-white"
