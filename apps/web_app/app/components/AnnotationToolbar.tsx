@@ -9,8 +9,12 @@ import {
   MdZoomOut,
   MdCenterFocusStrong,
   MdInfo,
-  MdImage,
+  MdAssessment,
 } from "react-icons/md";
+
+// Constants
+const MIN_ZOOM_SCALE = 1;
+const MAX_ZOOM_SCALE = 4;
 
 interface ToolbarOptions {
   // Rendering controls
@@ -51,49 +55,46 @@ interface ToolbarOptions {
   statsVisible: boolean;
 }
 
+const DEFAULT_OPTIONS: ToolbarOptions = {
+  toothPolygonsVisible: true,
+  toothColorBy: "uniform",
+  toothOpacity: 1,
+  toothStrokeWidth: 2,
+  boundingBoxesVisible: false,
+  boundingBoxLabelsVisible: false,
+  palateRegionsVisible: false,
+  palateFilterByName: null,
+  palateOpacity: 0.7,
+  canvasScale: 1,
+  canvasTranslateX: 0,
+  canvasTranslateY: 0,
+  filterByIllness: null,
+  filterDimOpacity: 0.3,
+  severityFilter: {
+    high: true,
+    moderate: true,
+    low: true,
+    none: true,
+  },
+  quadrantIsolation: null,
+  quadrantDimOpacity: 0.3,
+  illnessPoolVisible: false,
+  tooltipsVisible: true,
+  statsVisible: true,
+};
+
 interface AnnotationToolbarProps {
   onOptionsChange?: (options: Partial<ToolbarOptions>) => void;
 }
 
 export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
-  const [options, setOptions] = useState<ToolbarOptions>({
-    toothPolygonsVisible: true,
-    toothColorBy: "uniform",
-    toothOpacity: 1,
-    toothStrokeWidth: 2,
-    boundingBoxesVisible: false,
-    boundingBoxLabelsVisible: false,
-    palateRegionsVisible: false,
-    palateFilterByName: null,
-    palateOpacity: 0.7,
-    canvasScale: 1,
-    canvasTranslateX: 0,
-    canvasTranslateY: 0,
-    filterByIllness: null,
-    filterDimOpacity: 0.3,
-    severityFilter: {
-      high: true,
-      moderate: true,
-      low: true,
-      none: true,
-    },
-    quadrantIsolation: null,
-    quadrantDimOpacity: 0.3,
-    illnessPoolVisible: false,
-    tooltipsVisible: true,
-    statsVisible: true,
-  });
-
+  const [options, setOptions] = useState<ToolbarOptions>(DEFAULT_OPTIONS);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const handleOptionChange = (key: keyof ToolbarOptions, value: string | number | boolean | ToolbarOptions["severityFilter"] | null): void => {
+  const handleOptionChange = (key: keyof ToolbarOptions, value: ToolbarOptions[keyof ToolbarOptions]): void => {
     const newOptions = { ...options, [key]: value };
     setOptions(newOptions);
     onOptionsChange?.(newOptions);
-  };
-
-  const handleRenderingChange = (key: string, value: string | number | boolean | ToolbarOptions["severityFilter"] | null): void => {
-    handleOptionChange(key as keyof ToolbarOptions, value);
   };
 
   const handleSeverityFilterChange = (level: keyof typeof options.severityFilter) => {
@@ -109,40 +110,13 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
   };
 
   const handleZoom = (delta: number) => {
-    const newScale = Math.min(4, Math.max(1, options.canvasScale + delta));
+    const newScale = Math.min(MAX_ZOOM_SCALE, Math.max(MIN_ZOOM_SCALE, options.canvasScale + delta));
     handleOptionChange("canvasScale", newScale);
   };
 
   const handleReset = () => {
-    const defaultOptions: ToolbarOptions = {
-      toothPolygonsVisible: true,
-      toothColorBy: "uniform",
-      toothOpacity: 1,
-      toothStrokeWidth: 2,
-      boundingBoxesVisible: false,
-      boundingBoxLabelsVisible: false,
-      palateRegionsVisible: false,
-      palateFilterByName: null,
-      palateOpacity: 0.7,
-      canvasScale: 1,
-      canvasTranslateX: 0,
-      canvasTranslateY: 0,
-      filterByIllness: null,
-      filterDimOpacity: 0.3,
-      severityFilter: {
-        high: true,
-        moderate: true,
-        low: true,
-        none: true,
-      },
-      quadrantIsolation: null,
-      quadrantDimOpacity: 0.3,
-      illnessPoolVisible: false,
-      tooltipsVisible: true,
-      statsVisible: true,
-    };
-    setOptions(defaultOptions);
-    onOptionsChange?.(defaultOptions);
+    setOptions(DEFAULT_OPTIONS);
+    onOptionsChange?.(DEFAULT_OPTIONS);
   };
 
   return (
@@ -152,7 +126,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
         {/* Rendering Controls Group */}
         <div className="flex items-center gap-1 border-r border-gray-700 pr-3">
           <button
-            onClick={() => handleRenderingChange("toothPolygonsVisible", !options.toothPolygonsVisible)}
+            onClick={() => handleOptionChange("toothPolygonsVisible", !options.toothPolygonsVisible)}
             title="Toggle tooth outlines"
             className={`p-2 rounded transition-colors ${
               options.toothPolygonsVisible
@@ -164,7 +138,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
           </button>
           <select
             value={options.toothColorBy}
-            onChange={(e) => handleRenderingChange("toothColorBy", e.target.value)}
+            onChange={(e) => handleOptionChange("toothColorBy", e.target.value as "severity" | "illness" | "uniform")}
             title="Tooth color scheme"
             className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs border border-gray-700 hover:border-gray-600 transition-colors"
           >
@@ -177,7 +151,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
         {/* Bounding Boxes Group */}
         <div className="flex items-center gap-1 border-r border-gray-700 pr-3">
           <button
-            onClick={() => handleRenderingChange("boundingBoxesVisible", !options.boundingBoxesVisible)}
+            onClick={() => handleOptionChange("boundingBoxesVisible", !options.boundingBoxesVisible)}
             title="Toggle bounding boxes"
             className={`p-2 rounded transition-colors ${
               options.boundingBoxesVisible
@@ -188,7 +162,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
             <div className="h-4 w-4 border border-current rounded" />
           </button>
           <button
-            onClick={() => handleRenderingChange("boundingBoxLabelsVisible", !options.boundingBoxLabelsVisible)}
+            onClick={() => handleOptionChange("boundingBoxLabelsVisible", !options.boundingBoxLabelsVisible)}
             title="Toggle bounding box labels"
             className={`p-2 rounded transition-colors text-xs font-bold ${
               options.boundingBoxLabelsVisible
@@ -203,7 +177,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
         {/* Palate Regions Group */}
         <div className="flex items-center gap-1 border-r border-gray-700 pr-3">
           <button
-            onClick={() => handleRenderingChange("palateRegionsVisible", !options.palateRegionsVisible)}
+            onClick={() => handleOptionChange("palateRegionsVisible", !options.palateRegionsVisible)}
             title="Toggle palate regions"
             className={`p-2 rounded transition-colors ${
               options.palateRegionsVisible
@@ -232,7 +206,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
             <MdZoomOut className="h-4 w-4" />
           </button>
           <button
-            onClick={() => handleRenderingChange("canvasScale", 1)}
+            onClick={() => handleOptionChange("canvasScale", MIN_ZOOM_SCALE)}
             title="Reset zoom"
             className="p-2 rounded bg-gray-800 text-gray-400 hover:bg-gray-700 transition-colors text-xs font-bold"
           >
@@ -250,7 +224,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
         {/* Visibility Toggles Group */}
         <div className="flex items-center gap-1 border-r border-gray-700 pr-3">
           <button
-            onClick={() => handleRenderingChange("tooltipsVisible", !options.tooltipsVisible)}
+            onClick={() => handleOptionChange("tooltipsVisible", !options.tooltipsVisible)}
             title="Toggle tooltips"
             className={`p-2 rounded transition-colors ${
               options.tooltipsVisible
@@ -261,7 +235,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
             <span className="text-xs font-bold">?</span>
           </button>
           <button
-            onClick={() => handleRenderingChange("statsVisible", !options.statsVisible)}
+            onClick={() => handleOptionChange("statsVisible", !options.statsVisible)}
             title="Toggle stats"
             className={`p-2 rounded transition-colors ${
               options.statsVisible
@@ -269,7 +243,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
                 : "bg-gray-800 text-gray-400 hover:bg-gray-700"
             }`}
           >
-            <MdImage className="h-4 w-4" />
+            <MdAssessment className="h-4 w-4" />
           </button>
         </div>
 
@@ -381,7 +355,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
                 max="1"
                 step="0.1"
                 value={options.toothOpacity}
-                onChange={(e) => handleRenderingChange("toothOpacity", parseFloat(e.target.value))}
+                onChange={(e) => handleOptionChange("toothOpacity", parseFloat(e.target.value))}
                 className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
               />
             </div>
@@ -395,7 +369,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
                 max="1"
                 step="0.1"
                 value={options.palateOpacity}
-                onChange={(e) => handleRenderingChange("palateOpacity", parseFloat(e.target.value))}
+                onChange={(e) => handleOptionChange("palateOpacity", parseFloat(e.target.value))}
                 className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
               />
             </div>
@@ -412,7 +386,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
               max="5"
               step="0.5"
               value={options.toothStrokeWidth}
-              onChange={(e) => handleRenderingChange("toothStrokeWidth", parseFloat(e.target.value))}
+              onChange={(e) => handleOptionChange("toothStrokeWidth", parseFloat(e.target.value))}
               className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
             />
           </div>
@@ -428,12 +402,12 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
                 placeholder="Enter illness name..."
                 value={options.filterByIllness || ""}
                 onChange={(e) =>
-                  handleRenderingChange("filterByIllness", e.target.value || null)
+                  handleOptionChange("filterByIllness", e.target.value || null)
                 }
                 className="flex-1 px-2 py-1.5 bg-gray-800 text-white rounded text-xs border border-gray-700 focus:border-gray-600 outline-none"
               />
               <button
-                onClick={() => handleRenderingChange("filterByIllness", null)}
+                onClick={() => handleOptionChange("filterByIllness", null)}
                 className="px-3 py-1.5 bg-gray-800 text-gray-400 hover:bg-gray-700 rounded text-xs transition-colors"
               >
                 Clear
@@ -447,7 +421,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
               Show Unassigned Findings
             </label>
             <button
-              onClick={() => handleRenderingChange("illnessPoolVisible", !options.illnessPoolVisible)}
+              onClick={() => handleOptionChange("illnessPoolVisible", !options.illnessPoolVisible)}
               className={`p-2 rounded transition-colors ${
                 options.illnessPoolVisible
                   ? "bg-blue-600 text-white"
@@ -473,7 +447,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
               max="1"
               step="0.1"
               value={options.filterDimOpacity}
-              onChange={(e) => handleRenderingChange("filterDimOpacity", parseFloat(e.target.value))}
+              onChange={(e) => handleOptionChange("filterDimOpacity", parseFloat(e.target.value))}
               className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
             />
           </div>
