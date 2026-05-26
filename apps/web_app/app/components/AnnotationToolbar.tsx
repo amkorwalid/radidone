@@ -30,7 +30,7 @@ interface ToolbarOptions {
   palateFilterByName: string | null;
   palateOpacity: number;
 
-  // Canvas transform
+  // Canvas transform (canvasTranslateX/Y reserved for future panning implementation)
   canvasScale: number;
   canvasTranslateX: number;
   canvasTranslateY: number;
@@ -317,6 +317,20 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
                 LR
               </button>
             </div>
+            <div className="mt-2">
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Quadrant Dim Opacity: {Math.round(options.quadrantDimOpacity * 100)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={options.quadrantDimOpacity}
+                onChange={(e) => handleOptionChange("quadrantDimOpacity", parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
           </div>
 
           {/* Severity Filter */}
@@ -389,6 +403,30 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
               onChange={(e) => handleOptionChange("toothStrokeWidth", parseFloat(e.target.value))}
               className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
             />
+          </div>
+
+          {/* Palate Filter */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-2">
+              Filter Palate Regions by Name
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Enter region name..."
+                value={options.palateFilterByName || ""}
+                onChange={(e) =>
+                  handleOptionChange("palateFilterByName", e.target.value || null)
+                }
+                className="flex-1 px-2 py-1.5 bg-gray-800 text-white rounded text-xs border border-gray-700 focus:border-gray-600 outline-none"
+              />
+              <button
+                onClick={() => handleOptionChange("palateFilterByName", null)}
+                className="px-3 py-1.5 bg-gray-800 text-gray-400 hover:bg-gray-700 rounded text-xs transition-colors"
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
           {/* Illness Filter */}
