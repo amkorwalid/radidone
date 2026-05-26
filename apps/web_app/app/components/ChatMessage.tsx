@@ -1,5 +1,3 @@
-import { MdMessage, MdPerson } from "react-icons/md";
-
 interface ChatMessageProps {
   message: string;
   sender: "mentor" | "student";

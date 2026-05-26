@@ -1,11 +1,7 @@
 import json
-import re
-from urllib import response
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-
-from sympy import re
 
 load_dotenv()  
 

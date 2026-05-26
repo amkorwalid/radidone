@@ -1,13 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { MdUpload, MdImage } from "react-icons/md";
-import { toast } from "sonner";
-import { ChatMessage } from "../components/ChatMessage";
-import { AnnotationToolbar } from "../components/AnnotationToolbar";
-import { VoiceRecorder } from "../components/VoiceRecorder";
-import { ChatSkeleton, ImageUploadSkeleton } from "../components/LoadingIndicators";
+import { useEffect, useRef, useState } from "react";
+import { MdImage, MdUpload } from "react-icons/md";
 import Image from "next/image";
+import { toast } from "sonner";
+import { AnnotationToolbar } from "../components/AnnotationToolbar";
+import { ChatMessage } from "../components/ChatMessage";
+import { ChatSkeleton, ImageUploadSkeleton } from "../components/LoadingIndicators";
+import { VoiceRecorder } from "../components/VoiceRecorder";
+import { useAnnotationHistory } from "../components/useAnnotationHistory";
+import {
+  AIAnalysis,
+  MentorResponse,
+  MentorSequenceItem,
+  createSession,
+  fetchAnalysis,
+  sendMentorMessage,
+  sendVoiceMessage,
+  uploadImage,
+} from "../lib/api";
 
 interface Message {
   id: string;
@@ -17,32 +28,55 @@ interface Message {
   isLoading?: boolean;
 }
 
+interface CanvasState {
+  toothPolygons?: Record<string, unknown> | null;
+  boundingBoxes?: Record<string, unknown> | null;
+  palateRegions?: Record<string, unknown> | null;
+  transform?: Record<string, unknown> | null;
+  illnessFilter?: string | null;
+  severityFilter?: Record<string, boolean> | null;
+  quadrant?: string | null;
+  illnessPoolVisible?: boolean;
+  toothTooltip?: string | null;
+  toothPanel?: { toothId: string; section?: string } | null;
+  croppedImage?: { toothId: string; mode?: string } | null;
+  summaryStats?: { scope?: string; show?: boolean } | null;
+}
+
+interface CanvasEvent {
+  id: string;
+  action: string;
+  params?: Record<string, unknown>;
+}
+
+const initialCanvasState: CanvasState = {
+  illnessPoolVisible: false,
+};
+
 export default function Dashboard() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
-  const [session, setSession] = useState(false);
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hi, I'm Radidone, your dental radiology mentor. I'll guide you through this X-ray analysis using the Socratic method. Let's start by identifying what you observe.",
+      text: "Hi, I'm Radidone, your dental radiology mentor. Upload an X-ray and start a session to begin.",
       sender: "mentor",
       timestamp: "Just now",
     },
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPhase, setCurrentPhase] = useState("Observation");
+  const [isSessionLoading, setIsSessionLoading] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState("observation");
+  const [canvasState, setCanvasState] = useState<CanvasState>(initialCanvasState);
+  const [canvasEvents, setCanvasEvents] = useState<CanvasEvent[]>([]);
+  const [selectedTool, setSelectedTool] = useState("polygon");
+  const [layerVisible, setLayerVisible] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const phases = [
-    "Observation",
-    "Hypothesis",
-    "Diagnosis",
-    "Reflection",
-    "Evaluation",
-  ];
-  const currentPhaseIndex = phases.indexOf(currentPhase);
+  const { undo, redo, clear, canUndo, canRedo } = useAnnotationHistory();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,43 +86,161 @@ export default function Dashboard() {
     scrollToBottom();
   }, [messages]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Please upload a valid image file");
-        return;
-      }
+  const logCanvasEvent = (action: string, params?: Record<string, unknown>) => {
+    setCanvasEvents((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${action}`, action, params },
+    ].slice(-6));
+  };
 
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("Image size must be less than 10MB");
-        return;
-      }
-
-      setImage(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-      toast.success("Image uploaded successfully");
+  const dispatchCanvasAction = (item: MentorSequenceItem) => {
+    if (!item.function) {
+      return;
+    }
+    logCanvasEvent(item.function, item.params);
+    switch (item.function) {
+      case "renderToothPolygons":
+        setCanvasState((prev) => ({ ...prev, toothPolygons: item.params ?? {} }));
+        break;
+      case "renderBoundingBoxes":
+        setCanvasState((prev) => ({ ...prev, boundingBoxes: item.params ?? {} }));
+        break;
+      case "renderPalateRegions":
+        setCanvasState((prev) => ({ ...prev, palateRegions: item.params ?? {} }));
+        break;
+      case "setCanvasTransform":
+        setCanvasState((prev) => ({ ...prev, transform: item.params ?? {} }));
+        break;
+      case "filterByIllness":
+        setCanvasState((prev) => ({
+          ...prev,
+          illnessFilter: (item.params?.illnessName as string) ?? null,
+        }));
+        break;
+      case "filterBySeverity":
+        setCanvasState((prev) => ({
+          ...prev,
+          severityFilter: (item.params?.visible as Record<string, boolean>) ?? null,
+        }));
+        break;
+      case "isolateQuadrant":
+        setCanvasState((prev) => ({
+          ...prev,
+          quadrant: (item.params?.quadrant as string) ?? null,
+        }));
+        break;
+      case "toggleIllnessPool":
+        setCanvasState((prev) => ({
+          ...prev,
+          illnessPoolVisible: Boolean(item.params?.visible),
+        }));
+        break;
+      case "showToothTooltip":
+        setCanvasState((prev) => ({
+          ...prev,
+          toothTooltip: (item.params?.toothId as string) ?? null,
+        }));
+        break;
+      case "openToothPanel":
+        setCanvasState((prev) => ({
+          ...prev,
+          toothPanel: {
+            toothId: item.params?.toothId as string,
+            section: item.params?.section as string,
+          },
+        }));
+        break;
+      case "showCroppedImage":
+        setCanvasState((prev) => ({
+          ...prev,
+          croppedImage: {
+            toothId: item.params?.toothId as string,
+            mode: item.params?.mode as string,
+          },
+        }));
+        break;
+      case "updateSummaryStats":
+        setCanvasState((prev) => ({
+          ...prev,
+          summaryStats: {
+            scope: item.params?.scope as string,
+            show: Boolean(item.params?.show),
+          },
+        }));
+        break;
+      default:
+        break;
     }
   };
 
-  const startSession = () => {
+  const applyMentorSequence = (sequence: MentorSequenceItem[]) => {
+    sequence.forEach((item) => {
+      if (item.type === "text" && item.value) {
+        const mentorMessage: Message = {
+          id: `${Date.now()}-${item.value.slice(0, 8)}`,
+          text: item.value,
+          sender: "mentor",
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+        setMessages((prev) => [...prev, mentorMessage]);
+      }
+      if (item.type === "interaction") {
+        dispatchCanvasAction(item);
+      }
+    });
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image size must be less than 10MB");
+      return;
+    }
+    setImage(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    toast.success("Image ready for session");
+  };
+
+  const startSession = async () => {
     if (!image) {
       toast.error("Please upload an image first");
       return;
     }
-    setSession(true);
-    toast.success("Session started! Phase: Observation");
+    setIsSessionLoading(true);
+    try {
+      const session = await createSession("guided");
+      setSessionId(session.id);
+      setCurrentPhase(session.phase);
+      const uploaded = await uploadImage(image, session.id);
+      const analysisResult = await fetchAnalysis(uploaded.id);
+      setAnalysis(analysisResult);
+      toast.success(`Session started! Phase: ${session.phase}`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Unable to start session. Check the backend configuration.");
+    } finally {
+      setIsSessionLoading(false);
+    }
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) {
+    if (!inputValue.trim() || !sessionId) {
       return;
     }
-
     const userMessage: Message = {
       id: Date.now().toString(),
       text: inputValue,
@@ -102,71 +254,112 @@ export default function Dashboard() {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsLoading(true);
-
-    // Simulate mentor response with loading indicator
-    setTimeout(() => {
-      const mentorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "That's a good observation. Based on the findings you've identified, what differential diagnoses would you consider for this condition?",
-        sender: "mentor",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-      setMessages((prev) => [...prev, mentorMessage]);
+    try {
+      const response: MentorResponse = await sendMentorMessage(sessionId, userMessage.text);
+      setCurrentPhase(response.phase);
+      applyMentorSequence(response.mentorSequence.sequence);
+    } catch (error) {
+      console.error(error);
+      toast.error("Mentor response failed. Please retry.");
+    } finally {
       setIsLoading(false);
+    }
+  };
 
-      // Advance phase
-      if (currentPhaseIndex < phases.length - 1) {
-        setCurrentPhase(phases[currentPhaseIndex + 1]);
-        toast.success(`Phase advanced to ${phases[currentPhaseIndex + 1]}`);
+  const handleVoiceRecord = async (blob: Blob) => {
+    if (!sessionId) {
+      toast.error("Start a session before sending voice input.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await sendVoiceMessage(sessionId, blob);
+      const transcript = response.mentorResponse.transcriptText;
+      if (transcript) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-voice`,
+            text: transcript,
+            sender: "student",
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          },
+        ]);
       }
-    }, 2000);
+      setCurrentPhase(response.mentorResponse.phase);
+      applyMentorSequence(response.mentorResponse.mentorSequence.sequence);
+    } catch (error) {
+      console.error(error);
+      toast.error("Voice message failed. Check audio permissions or backend.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleVoiceRecord = (blob: Blob) => {
-    void blob;
-    toast.success("Voice message recorded");
-    // In a real app, send the audio blob to the backend for transcription
-  };
+  const sessionActive = Boolean(sessionId);
+  const analysisSummary = (analysis?.analysisJson as { summary?: { teeth?: { present?: number } } })
+    ?.summary;
 
   return (
     <main className="min-h-screen bg-black">
-      {/* Header */}
       <header className="bg-black border-b border-gray-800 sticky top-0 z-50">
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-medium text-white">Radidone</h1>
           </div>
-          
+          {sessionActive && (
+            <div className="text-sm text-gray-400">Phase: {currentPhase}</div>
+          )}
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="p-6 h-[calc(100vh-5rem)]">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-          {/* Image and Annotation Panel */}
           <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-              {/* Annotation Toolbar */}
-            {session && imagePreview && (
-              <div>
-                <AnnotationToolbar />
-              </div>
+            {sessionActive && imagePreview && (
+              <AnnotationToolbar
+                onToolChange={setSelectedTool}
+                onUndo={undo}
+                onRedo={redo}
+                onClear={clear}
+                onToggleLayer={() => setLayerVisible((prev) => !prev)}
+                layerVisible={layerVisible}
+                selectedTool={selectedTool}
+                canUndo={canUndo}
+                canRedo={canRedo}
+              />
             )}
-            {/* Image Area */}
             <div className="flex-1 bg-linear-to-br from-zinc-900 to-zinc-950 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
               {imagePreview ? (
                 <div className="flex-1 overflow-auto relative">
-                  
-                  <Image 
-                    src={imagePreview} 
+                  <Image
+                    src={imagePreview}
                     fill
-                    alt="X-ray" 
-                    className="w-full p-8 object-contain" />
-                  {session && (
+                    alt="X-ray"
+                    className="w-full p-8 object-contain"
+                  />
+                  {sessionActive && (
                     <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 px-3 py-1 rounded-lg text-xs text-gray-300">
-                      Annotations visible
+                      {layerVisible ? "Annotations visible" : "Annotations hidden"}
+                    </div>
+                  )}
+                  {sessionActive && (
+                    <div className="absolute top-4 left-4 bg-black bg-opacity-70 px-3 py-2 rounded-lg text-xs text-gray-200 space-y-1">
+                      {canvasState.illnessFilter && (
+                        <div>Illness filter: {canvasState.illnessFilter}</div>
+                      )}
+                      {canvasState.quadrant && <div>Quadrant: {canvasState.quadrant}</div>}
+                      {canvasState.toothPanel && (
+                        <div>Tooth panel: {canvasState.toothPanel.toothId}</div>
+                      )}
+                      {analysisSummary && (
+                        <div>
+                          Teeth present: {analysisSummary.teeth?.present ?? "—"}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -193,31 +386,22 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+            {sessionActive && canvasEvents.length > 0 && (
+              <div className="bg-black border border-gray-800 rounded-lg p-3 text-xs text-gray-300">
+                <div className="text-gray-400 mb-2">Canvas actions</div>
+                <div className="space-y-1">
+                  {canvasEvents.map((event) => (
+                    <div key={event.id}>{event.action}</div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Chat and Session Panel */}
           <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
             <div className="flex-1 bg-linear-to-br from-zinc-900 to-zinc-950 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
-              {session && imagePreview ? (
+              {sessionActive && imagePreview ? (
                 <>
-                  {/* Phase Progress */}
-                  {/* <div className="px-4 pt-4 pb-2 border-b border-gray-700">
-                    <div className="text-xs text-gray-400 mb-2">Session Progress</div>
-                    <div className="flex gap-1">
-                      {phases.map((phase, index) => (
-                        <div
-                          key={phase}
-                          className={`flex-1 h-1.5 rounded-full transition-colors ${
-                            index <= currentPhaseIndex
-                              ? "bg-blue-600"
-                              : "bg-gray-700"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div> */}
-
-                  {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.length === 0 ? (
                       <ChatSkeleton />
@@ -243,54 +427,45 @@ export default function Dashboard() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Input Area */}
                   <div className="border-t border-gray-700 p-4 space-y-3">
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        onKeyPress={(e) =>
-                          e.key === "Enter" && handleSendMessage()
-                        }
+                        onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                         placeholder="Type your response..."
                         className="flex-1 px-3 py-2 bg-zinc-800 text-white rounded-lg border border-gray-700 focus:border-white focus:outline-none transition-colors text-sm"
                         disabled={isLoading}
                       />
                       <button
                         onClick={handleSendMessage}
-                        disabled={isLoading || !inputValue.trim()}
-                        className="px-4 py-2 bg-white text-black rounded-lg disabled:bg-zinc-800 disabled:text-white disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                       >
                         Send
                       </button>
                     </div>
-                    <VoiceRecorder
-                      onRecord={handleVoiceRecord}
-                      isLoading={isLoading}
-                    />
+                    <VoiceRecorder onRecord={handleVoiceRecord} isLoading={isLoading} />
                   </div>
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center p-6">
+                <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="h-16 w-16 bg-black rounded-xl mx-auto mb-4 flex items-center justify-center">
-                      <MdImage className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      Ready to Start?
+                    <MdImage className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-white mb-2">
+                      Start a Session
                     </h3>
-                    <p className="text-gray-400 text-sm mb-4">
-                      Upload an X-ray to begin your learning session
+                    <p className="text-sm text-gray-400 mb-6">
+                      Upload an X-ray image and start a session to begin
                     </p>
-                    {image && (
-                      <button
-                        onClick={startSession}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:from-green-700 hover:to-green-600 transition-all font-medium"
-                      >
-                        Start Session
-                      </button>
-                    )}
+                    <button
+                      onClick={startSession}
+                      disabled={isSessionLoading}
+                      className="px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors font-medium disabled:opacity-50"
+                    >
+                      {isSessionLoading ? "Starting..." : "Start Session"}
+                    </button>
                   </div>
                 </div>
               )}

@@ -327,6 +327,28 @@ paths:
                 $ref: '#/components/schemas/ConversationTurn'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+  /api/sessions/{sessionId}/mentor:
+    post:
+      tags: [Conversations]
+      summary: Send a student message and receive mentor response sequence
+      operationId: generateMentorResponse
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MentorRequest'
+      responses:
+        '200':
+          description: Mentor response with ordered sequence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
   /api/sessions/{sessionId}/voice:
     post:
       tags: [Voice]
@@ -342,11 +364,11 @@ paths:
               $ref: '#/components/schemas/VoiceUploadRequest'
       responses:
         '201':
-          description: Voice transcription stored
+          description: Voice transcription with mentor response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AudioVoice'
+                $ref: '#/components/schemas/VoiceMentorResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   /api/voice:
@@ -482,20 +504,28 @@ components:
       enum: [observation, hypothesis, diagnosis, reflection, evaluation]
     Session:
       type: object
-      required: [id, userId, status, startedAt, createdAt, updatedAt]
+      required: [id, userId, status, phase, mode, startedAt, createdAt, updatedAt]
       properties:
         id:
           type: integer
         userId:
           type: integer
+        mode:
+          type: string
+          enum: [guided, assessment]
         status:
           $ref: '#/components/schemas/SessionStatus'
+        phase:
+          $ref: '#/components/schemas/SessionPhase'
         startedAt:
           type: string
           format: date-time
         endedAt:
           type: string
           format: date-time
+          nullable: true
+        xrayImageId:
+          type: integer
           nullable: true
         createdAt:
           type: string
@@ -677,6 +707,71 @@ components:
           type: integer
         transcriptText:
           type: string
+    MentorRequest:
+      type: object
+      required: [messageText]
+      properties:
+        messageText:
+          type: string
+        inputMode:
+          type: string
+          enum: [text, voice]
+          default: text
+    MentorSequenceItem:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [text, interaction]
+        value:
+          type: string
+          nullable: true
+        function:
+          type: string
+          nullable: true
+        params:
+          type: object
+          additionalProperties: true
+          nullable: true
+    MentorSequence:
+      type: object
+      required: [sequence]
+      properties:
+        sequence:
+          type: array
+          items:
+            $ref: '#/components/schemas/MentorSequenceItem'
+    MentorResponse:
+      type: object
+      required: [sessionId, phase, studentTurn, mentorTurn, mentorSequence]
+      properties:
+        sessionId:
+          type: integer
+        phase:
+          $ref: '#/components/schemas/SessionPhase'
+        studentTurn:
+          $ref: '#/components/schemas/ConversationTurn'
+        mentorTurn:
+          $ref: '#/components/schemas/ConversationTurn'
+        mentorSequence:
+          $ref: '#/components/schemas/MentorSequence'
+        transcriptText:
+          type: string
+          nullable: true
+        audioUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
+    VoiceMentorResponse:
+      type: object
+      required: [audioVoice, mentorResponse]
+      properties:
+        audioVoice:
+          $ref: '#/components/schemas/AudioVoice'
+        mentorResponse:
+          $ref: '#/components/schemas/MentorResponse'
     AudioVoice:
       type: object
       required: [id, sessionId, userId, conversationId, createdAt]

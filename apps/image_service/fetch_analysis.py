@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
+from image_service.normalize_analysis import normalize_analysis
+
 load_dotenv()
 
 API_KEY = os.getenv('THAKAAMED_API_KEY')
@@ -22,3 +24,8 @@ def analyze(slug):
             return data
         
     raise TimeoutError(f"Analysis {slug} not complete after 3 minutes")
+
+
+def analyze_and_normalize(slug):
+    raw = analyze(slug)
+    return raw, normalize_analysis(raw)

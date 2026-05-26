@@ -175,12 +175,11 @@ Full C4 model (Level 1–3) is maintained in [`docs/architecture/c4_model.dsl`](
 ```bash
 radidone/
 ├── apps/
-│   ├── web-app/                # React + TypeScript frontend
-│   ├── api-gateway/            # Auth, routing, and WebSocket entrypoint
+│   ├── web_app/                # React + TypeScript frontend
 │   ├── session-orchestrator/   # Session lifecycle and workflow state
-│   ├── mentor-engine/          # Socratic mentor and prompt pipeline
-│   ├── voice-service/          # Speech-to-text / text-to-speech adapters
-│   └── image-service/          # X-ray upload and AI analysis integration
+│   ├── mentor_engine/          # Socratic mentor and prompt pipeline
+│   ├── voice_service/          # Speech-to-text / text-to-speech adapters
+│   └── image_service/          # X-ray upload and AI analysis integration
 ├── packages/
 │   ├── shared-types/           # DTOs, enums, and contracts
 │   ├── shared-utils/           # Logging, validation, env helpers
@@ -378,11 +377,11 @@ git clone https://github.com/amkorwalid/radidone.git
 cd radidone
 
 # Frontend
-cd apps/web-app
+cd apps/web_app
 npm install
 
-# Backend
-cd backend
+# Session Orchestrator (FastAPI)
+cd ../session-orchestrator
 pip install -r requirements.txt
 ```
 
@@ -390,40 +389,47 @@ pip install -r requirements.txt
 
 ```bash
 # Frontend
-cd apps/web-app
+cd apps/web_app
 npm run dev
 
-# Backend
-cd backend
-uvicorn app.main:app --reload
+# Session Orchestrator
+uvicorn main:app --reload --app-dir apps/session-orchestrator
+```
+
+### Smoke Flow
+
+```bash
+RADIDONE_SMOKE_IMAGE=/path/to/panoramic-xray.png \
+RADIDONE_API_BASE_URL=http://localhost:8000 \
+python tests/e2e/smoke_flow.py
 ```
 
 ---
 
 ## Environment Variables
 
-### Frontend (`apps/web-app/.env`)
+### Frontend (`apps/web_app/.env`)
 
 ```env
-VITE_API_URL=http://localhost:8000
-VITE_WS_URL=ws://localhost:8000
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_WS_BASE_URL=ws://localhost:8000
 ```
 
-### API Gateway (`apps/api-gateway/.env`)
+### Session Orchestrator (`apps/session-orchestrator/.env`)
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/radidone
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=your-jwt-secret
-CLERK_SECRET_KEY=sk_test_...
-SESSION_ORCHESTRATOR_URL=http://localhost:8001
-IMAGE_SERVICE_URL=http://localhost:8003
-VOICE_SERVICE_URL=http://localhost:8004
-NOTIFICATION_SERVICE_URL=http://localhost:8005
+RADIDONE_CORS_ORIGINS=http://localhost:3000
+RADIDONE_ENABLE_TTS=false
+RADIDONE_TTS_OUTPUT_DIR=apps/session-orchestrator/static/tts
+
+DEEPSEEK_API_KEY=sk-...
+OPENAI_API_KEY=sk-...
+THAKAAMED_API_KEY=...
+THAKAAMED_API_FACILITY=...
+THAKAAMED_API_BASE=https://api.thaakamed.com
 ```
 
-### Mentor Engine (`apps/mentor-engine/.env`)
+### Mentor Engine (`apps/mentor_engine/.env`)
 
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/radidone
@@ -432,7 +438,7 @@ LLM_MODEL=gpt-4o
 LLM_BASE_URL=https://api.openai.com/v1
 ```
 
-### Image Service (`apps/image-service/.env`)
+### Image Service (`apps/image_service/.env`)
 
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/radidone
@@ -444,7 +450,7 @@ OBJECT_STORE_KEY=...
 OBJECT_STORE_SECRET=...
 ```
 
-### Voice Service (`apps/voice-service/.env`)
+### Voice Service (`apps/voice_service/.env`)
 
 ```env
 STT_API_KEY=...
