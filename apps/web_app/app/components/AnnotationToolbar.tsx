@@ -213,7 +213,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
             {Math.round(options.canvasScale * 100)}%
           </button>
           <button
-            onClick={() => handleReset()}
+            onClick={handleReset}
             title="Reset all"
             className="p-2 rounded bg-gray-800 text-gray-400 hover:bg-gray-700 transition-colors"
           >
@@ -436,7 +436,7 @@ export function AnnotationToolbar({ onOptionsChange }: AnnotationToolbarProps) {
             </button>
           </div>
 
-          {/* Dim Opacity for filters */}
+          {/* Dim Opacity for Filters */}
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1">
               Filter Dim Opacity: {Math.round(options.filterDimOpacity * 100)}%
