@@ -5,6 +5,7 @@ import { MdUpload, MdImage } from "react-icons/md";
 import { toast } from "sonner";
 import { ChatMessage } from "../components/ChatMessage";
 import { AnnotationToolbar } from "../components/AnnotationToolbar";
+import { CanvasImage } from "../components/CanvasImage";
 import { VoiceRecorder } from "../components/VoiceRecorder";
 import { ChatSkeleton, ImageUploadSkeleton } from "../components/LoadingIndicators";
 import Image from "next/image";
@@ -15,6 +16,45 @@ interface Message {
   sender: "mentor" | "student";
   timestamp: string;
   isLoading?: boolean;
+}
+
+interface ToolbarOptions {
+  // Rendering controls
+  toothPolygonsVisible: boolean;
+  toothColorBy: "severity" | "illness" | "uniform";
+  toothOpacity: number;
+  toothStrokeWidth: number;
+
+  boundingBoxesVisible: boolean;
+  boundingBoxLabelsVisible: boolean;
+
+  palateRegionsVisible: boolean;
+  palateFilterByName: string | null;
+  palateOpacity: number;
+
+  // Canvas transform (canvasTranslateX/Y reserved for future panning implementation)
+  canvasScale: number;
+  canvasTranslateX: number;
+  canvasTranslateY: number;
+
+  // Filtering
+  filterByIllness: string | null;
+  filterDimOpacity: number;
+
+  severityFilter: {
+    high: boolean;
+    moderate: boolean;
+    low: boolean;
+    none: boolean;
+  };
+
+  quadrantIsolation: "UR" | "UL" | "LL" | "LR" | null;
+  quadrantDimOpacity: number;
+
+  // UI state
+  illnessPoolVisible: boolean;
+  tooltipsVisible: boolean;
+  statsVisible: boolean;
 }
 
 export default function Dashboard() {
@@ -32,6 +72,7 @@ export default function Dashboard() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentPhase, setCurrentPhase] = useState("Observation");
+  const [toolbarOptions, setToolbarOptions] = useState<Partial<ToolbarOptions>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -131,6 +172,10 @@ export default function Dashboard() {
     // In a real app, send the audio blob to the backend for transcription
   };
 
+  const handleOptionsChange = (options: Partial<ToolbarOptions>) => {
+    setToolbarOptions(options);
+  };
+
   return (
     <main className="min-h-screen bg-black">
       {/* Header */}
@@ -151,19 +196,22 @@ export default function Dashboard() {
               {/* Annotation Toolbar */}
             {session && imagePreview && (
               <div>
-                <AnnotationToolbar />
+                <AnnotationToolbar onOptionsChange={handleOptionsChange} />
               </div>
             )}
             {/* Image Area */}
             <div className="flex-1 bg-linear-to-br from-zinc-900 to-zinc-950 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
               {imagePreview ? (
                 <div className="flex-1 overflow-auto relative">
-                  
-                  <Image 
-                    src={imagePreview} 
-                    fill
-                    alt="X-ray" 
-                    className="w-full p-8 object-contain" />
+                  {session ? (
+                    <CanvasImage imageSrc={imagePreview} options={toolbarOptions} />
+                  ) : (
+                    <Image 
+                      src={imagePreview} 
+                      fill
+                      alt="X-ray" 
+                      className="w-full p-8 object-contain" />
+                  )}
                   {session && (
                     <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 px-3 py-1 rounded-lg text-xs text-gray-300">
                       Annotations visible
